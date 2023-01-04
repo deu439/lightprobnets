@@ -95,9 +95,9 @@ class TqdmToLogger(tqdm.tqdm):
         self._closed = False
 
     @staticmethod
-    def format_meter(n, total, elapsed, ncols=None, prefix='', ascii=False,
+    def format_meter(n, total, elapsed, ncols=None, nrows=None, prefix='', ascii=False,
                      unit='it', unit_scale=False, rate=None, bar_format=None,
-                     postfix=None, unit_divisor=1000):
+                     postfix=None, unit_divisor=1000, initial=0, colour=None):
 
         meter = tqdm.tqdm.format_meter(
             n=n, total=total, elapsed=elapsed, ncols=ncols, prefix=prefix, ascii=ascii,
@@ -123,7 +123,7 @@ class TqdmToLogger(tqdm.tqdm):
         while True:
             try:
                 logging.logbook(msg)
-            except IOError, e:
+            except (IOError, e):
                 if e.errno != errno.EINTR:
                     raise ValueError("Logbook TQDM IOError")
                 else:

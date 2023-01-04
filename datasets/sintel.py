@@ -65,9 +65,10 @@ class _Sintel(data.Dataset):
         self._flow_list = [] if flow_root is not None else None
 
         for base_folder in base_folders:
-            img_filenames = filter(lambda x: base_folder in x, all_img_filenames)
+            img_filenames = [fname for fname in all_img_filenames if base_folder in fname ]
+
             if flow_root is not None:
-                flo_filenames = filter(lambda x: base_folder in x, all_flo_filenames)
+                flo_filenames = [flo for flo in all_flo_filenames if base_folder in flo]
 
             for i in range(len(img_filenames) - 1):
 

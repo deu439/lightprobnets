@@ -2,9 +2,9 @@
 
 
 # meta
-CHECKPOINT="$PWD/../pretrained/flownet_probout.ckpt"  # set this to your trained model file
-SINTEL_HOME=/fastdata/MPI-Sintel-complete/
-MODEL=FlowNetProbOut
+CHECKPOINT="$PWD/../pretrained/flownet_adf.ckpt"  # set this to your trained model file
+SINTEL_HOME=/home/deu/Sintel
+MODEL=FlowNetADF
 
 # validate clean configuration
 PREFIX="validate-sintel-clean"

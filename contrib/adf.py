@@ -149,7 +149,8 @@ class Conv2d(_ConvNd):
         dilation = _pair(dilation)
         super(Conv2d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), groups, bias)
+            False, _pair(0), groups, bias, 'zeros')
+
 
     def forward(self, inputs_mean, inputs_variance):
         outputs_mean = tf.conv2d(
@@ -173,10 +174,11 @@ class ConvTranspose2d(_ConvTransposeMixin, _ConvNd):
         output_padding = _pair(output_padding)
         super(ConvTranspose2d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
-            True, output_padding, groups, bias)
+            True, output_padding, groups, bias, 'zeros')
 
     def forward(self, inputs_mean, inputs_variance, output_size=None):
-        output_padding = self._output_padding(inputs_mean, output_size)
+        output_padding = self._output_padding(inputs_mean, output_size,
+                self.stride, self.padding, self.kernel_size, 2)
         outputs_mean = tf.conv_transpose2d(
             inputs_mean, self.weight, self.bias, self.stride, self.padding,
             output_padding, self.groups, self.dilation)

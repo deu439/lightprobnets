@@ -1,10 +1,10 @@
-import flownet1s
-import flownet_probout
-import flownet_adf
-import lenet_probout
-import lenet_adf
-import allconvnet_probout
-import allconvnet_adf
+import models.flownet1s
+import models.flownet_probout
+import models.flownet_adf
+import models.lenet_probout
+import models.lenet_adf
+import models.allconvnet_probout
+import models.allconvnet_adf
 
 
 AllConvNetADF = allconvnet_adf.AllConvNetADF

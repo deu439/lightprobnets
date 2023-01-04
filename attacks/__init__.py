@@ -1,3 +1,3 @@
-import fgsm
+import attacks.fgsm
 
 FGSM = fgsm.FGSM

@@ -1,8 +1,7 @@
-import classification_losses
-import endpoint_error
-import probabilistic_classification_losses
-import probabilistic_endpoint_error
-
+import losses.classification_losses
+import losses.endpoint_error
+import losses.probabilistic_classification_losses
+import losses.probabilistic_endpoint_error
 
 ClassificationLoss = classification_losses.ClassificationLoss
 DirichletProbOutLoss = probabilistic_classification_losses.DirichletProbOutLoss

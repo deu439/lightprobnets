@@ -6,7 +6,8 @@ import random
 
 import torch
 import numpy as np
-from scipy import ndimage
+# NOTE: NDIMAGE is deprecated!
+import imageio as ndimage
 
 
 def numpy2torch(array):
