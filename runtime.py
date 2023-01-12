@@ -13,6 +13,9 @@ import logger
 from holistic_records import EpochRecorder
 from utils.moving_averages import MovingAverage
 
+#import matplotlib.pyplot as plt
+#import flow_vis
+
 # --------------------------------------------------------------------------------
 # Exponential moving average smoothing factor for speed estimates
 # Ranges from 0 (average speed) to 1 (current/instantaneous speed) [default: 0.3].
@@ -350,6 +353,13 @@ class EvaluationEpoch:
                 # Perform forward evaluation step
                 # ---------------------------------------
                 loss_dict_per_step, output_dict, batch_size = self._step(example_dict)
+                #u = np.array(output_dict['flow1'][0][0, 0, :, :])
+                #v = np.array(output_dict['flow1'][0][0, 1, :, :])
+                #mx = np.max(np.sqrt(u**2 + v**2))
+                #flow_color = flow_vis.flow_uv_to_colors(u / mx, v / mx, convert_to_bgr=False)
+                #plt.imshow(flow_color)
+                #plt.show()
+                
 
                 # ---------------------------------------
                 # recorder

@@ -4,7 +4,7 @@ TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT=None
-FLYINGCHAIRS_HOME=/fastdata/FlyingChairs_release/data/
+FLYINGCHAIRS_HOME=/home/deu/FlyingChairs_release/data
 MODEL=FlowNet1S
 PREFIX="train-flyingchairs"
 TIME=$(date +"%Y%m%d-%H%M%S")
@@ -12,7 +12,7 @@ SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
 
 # training configuration
 python ../main.py \
---batch_size=8 \
+--batch_size=4 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
