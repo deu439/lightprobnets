@@ -5,6 +5,5 @@
 contrib/lgamma_function/_ext
 output/*
 pretrained/
-scripts/
 __pycache__/
 build/
