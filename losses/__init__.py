@@ -7,3 +7,4 @@ ClassificationLoss = classification_losses.ClassificationLoss
 DirichletProbOutLoss = probabilistic_classification_losses.DirichletProbOutLoss
 MultiScaleEPE = endpoint_error.MultiScaleEPE
 MultiScaleLaplacian = probabilistic_endpoint_error.MultiScaleLaplacian
+EPE = endpoint_error.EPE

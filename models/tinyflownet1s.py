@@ -58,10 +58,9 @@ class TinyFlowNetS(nn.Module):
 
 
 class TinyFlowNet1S(nn.Module):
-    def __init__(self, args, div_flow=0.05):
+    def __init__(self, args):
         super(TinyFlowNet1S, self).__init__()
         self._flownets = TinyFlowNetS(args)
-        self._div_flow = div_flow
 
     def forward(self, input_dict):
         im1 = input_dict['input1']
@@ -70,11 +69,6 @@ class TinyFlowNet1S(nn.Module):
 
         output_dict = {}
         flow1 = self._flownets(inputs)
-        #output_dict['flow1'] = flow1
-        if self.training:
-            output_dict['flow1'] = upsample2d_as(flow1, im1, mode="bilinear")
-        else:
-            # div_flow trick
-            output_dict['flow1'] = (1.0 / self._div_flow) * upsample2d_as(flow1, im1, mode="bilinear")
+        output_dict['flow1'] = upsample2d_as(flow1, im1, mode="bilinear")
 
         return output_dict

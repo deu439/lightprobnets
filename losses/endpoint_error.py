@@ -87,3 +87,18 @@ class MultiScaleEPE(nn.Module):
             loss_dict["epe"] = epe.mean()
 
         return loss_dict
+
+
+class EPE(nn.Module):
+    def __init__(self, args):
+        super(EPE, self).__init__()
+        self._args = args
+
+    def forward(self, output_dict, target_dict):
+        loss_dict = {}
+        output = output_dict["flow1"]
+        target = target_dict["target1"]
+        epe = elementwise_epe(output, target)
+        loss_dict["epe"] = epe.mean()
+
+        return loss_dict
