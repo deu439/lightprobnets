@@ -474,8 +474,8 @@ def exec_runtime(args,
             # --------------------------------------------------------
             # Update standard learning scheduler
             # --------------------------------------------------------
-            if lr_scheduler is not None and not validation_scheduler:
-                lr_scheduler.step(epoch)
+            #if lr_scheduler is not None and not validation_scheduler:
+            #    lr_scheduler.step(epoch)
 
             # --------------------------------------------------------
             # Always report learning rate and model
@@ -483,7 +483,7 @@ def exec_runtime(args,
             if lr_scheduler is None:
                 logging.info("model: %s  lr: %s" % (args.model, format_learning_rate(args.optimizer_lr)))
             else:
-                logging.info("model: %s  lr: %s" % (args.model, format_learning_rate(lr_scheduler.get_lr())))
+                logging.info("model: %s  lr: %s" % (args.model, format_learning_rate(lr_scheduler.get_last_lr())))
 
             # -------------------------------------------
             # Create and run a training epoch
