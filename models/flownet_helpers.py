@@ -42,7 +42,7 @@ def concatenate_as(tensor_list, tensor_as, dim, mode="bilinear"):
 
 def upsample2d_as(inputs, target_as, mode="bilinear"):
     _, _, h, w = target_as.size()
-    return tf.upsample(inputs, [h, w], mode=mode, align_corners=True)
+    return tf.interpolate(inputs, [h, w], mode=mode, align_corners=True)
 
 
 def keep_variance(inputs_variance, min_variance):

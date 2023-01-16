@@ -149,7 +149,7 @@ def resize2D(inputs, size_targets, mode="bilinear"):
     elif any([size_targets < size_inputs]):
         resized = tf.adaptive_avg_pool2d(inputs, size_targets)  # downscaling
     else:
-        resized = tf.upsample(inputs, size=size_targets, mode=mode)  # upsampling
+        resized = tf.interpolate(inputs, size=size_targets, mode=mode)  # upsampling
 
     # correct scaling
     return resized
