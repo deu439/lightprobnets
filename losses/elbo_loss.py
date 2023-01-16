@@ -17,16 +17,16 @@ def penalty(x):
 
 
 class Elbo(nn.Module):
-    def __init__(self, args):
+    def __init__(self, args, alpha=1.0, beta=1.0, Nsamples=1):
 
         super(Elbo, self).__init__()
         self._args = args
         self._Normal = torch.distributions.Normal(0, 1)
         self._Normal.loc = self._Normal.loc.cuda() # hack to get sampling on the GPU
         self._Normal.scale = self._Normal.scale.cuda()
-        #self._Nsamples = 1
-        self._alpha = 1.0
-        self._beta = 1.0
+        self._Nsamples = Nsamples
+        self._alpha = alpha
+        self._beta = beta
         self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
         self._kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
@@ -37,9 +37,14 @@ class Elbo(nn.Module):
 
     # Reparametrization trick
     def reparam(self, mean, log_var):
-        # b, c, h, w = mean.size()
-        # shape = (self.N_samples, b, c, h, w)
-        # z = mean.expand(shape) + torch.exp(log_var/2.0).expand(shape) * self._Normal.sample(shape)
+        """
+        Generates normal distributed samples with a given mean and variance.
+        mean: mean - tensor of size (batch, 2, height, width)
+        log_var: log(variance) - tensor of size (batch, 2, height, width)
+        returns: samples - tensor of size (Nsamples*batch, 2, height, width)
+        """
+        mean = mean.repeat(self._Nsamples, 1, 1, 1)
+        log_var = log_var.repeat(self._Nsamples, 1, 1, 1)
         z = mean + torch.exp(log_var / 2.0) * self._Normal.sample(mean.size())
         return z
 
@@ -53,7 +58,7 @@ class Elbo(nn.Module):
 
         # Warp img2 according to flow
         img2_warp = self._resample2d(img2, flow.contiguous())
-        A = torch.sum((img1 - img2_warp)**2, dim=1)
+        A = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)
         data_term = torch.sum(penalty(A), dim=(1, 2))
 
         B = F.pad(torch.sum(F.conv2d(flow, self._kernel_dx)**2, dim=1), (0,1,0,0)) \
@@ -71,8 +76,9 @@ class Elbo(nn.Module):
 
         # Evaluate ELBO
         flow_sample = self.reparam(mean, log_var)
-        elbo = self.energy(flow_sample, img1, img2) - torch.sum(log_var, dim=(1,2,3))/2
-        mean_elbo = elbo.mean()
+        energy = self.energy(flow_sample, img1, img2)
+        entropy = torch.sum(log_var, dim=(1,2,3))/2
+        mean_elbo = energy.mean() - entropy.mean()
         loss_dict["elbo"] = mean_elbo
 
         # Calculate epe for validation
