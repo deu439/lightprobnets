@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import numpy as  np
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -29,11 +29,11 @@ class Elbo(nn.Module):
         self._beta = beta
         self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
-        self._kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
-        self._kernel_dy = torch.tensor([[[[-1], [1]], [[0], [0]]], [[[0], [0]], [[-1], [1]]]], dtype=torch.float32)
-        if args.cuda:
-            self._kernel_dx = self._kernel_dx.cuda()
-            self._kernel_dy = self._kernel_dy.cuda()
+        kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
+        kernel_dy = torch.tensor([[[[-1], [1]], [[0], [0]]], [[[0], [0]], [[-1], [1]]]], dtype=torch.float32)
+        # Buffers are moved to GPU together with the parent module
+        self.register_buffer('_kernel_dx', kernel_dx)
+        self.register_buffer('_kernel_dy', kernel_dy)
 
     # Reparametrization trick
     def reparam(self, mean, log_var):
@@ -87,3 +87,83 @@ class Elbo(nn.Module):
         loss_dict["epe"] = mean_epe
 
         return loss_dict
+
+
+class MultiScaleElbo(Elbo):
+    def __init__(self,
+                 args,
+                 num_scales=5,
+                 num_highres_scales=2,
+                 coarsest_resolution_loss_weight=0.32,
+                 alpha=1.0,
+                 beta=1.0,
+                 Nsamples=1):
+
+        super(MultiScaleElbo, self).__init__(args=args, alpha=alpha, beta=beta, Nsamples=Nsamples)
+        self._num_scales = num_scales
+
+        # ---------------------------------------------------------------------
+        # start with initial scale
+        # for "low-resolution" scales we apply a scale factor of 4
+        # for "high-resolution" scales we apply a scale factor of 2
+        #
+        # e.g. for FlyingChairs  weights=[0.005, 0.01, 0.02, 0.08, 0.32]
+        # ---------------------------------------------------------------------
+        self._weights = [coarsest_resolution_loss_weight]
+        num_lowres_scales = num_scales - num_highres_scales
+        for k in range(num_lowres_scales - 1):
+            self._weights += [self._weights[-1] / 4]
+        for k in range(num_highres_scales):
+            self._weights += [self._weights[-1] / 2]
+        self._weights.reverse()
+        assert (len(self._weights) == num_scales)  # sanity check
+
+    # Override base class forward() method !
+    def forward(self, output_dict, target_dict):
+        loss_dict = {}
+        target = target_dict["target1"]
+        img1 = target_dict["input1"]
+        img2 = target_dict["input2"]
+
+        if self.training:
+            outputs = [output_dict[key] for key in ["flow2", "flow3", "flow4", "flow5", "flow6"]]
+
+            total_loss = 0
+            for i, output_i in enumerate(outputs):
+                img1_i = downsample2d_as(img1, output_i[0])
+                img2_i = downsample2d_as(img2, output_i[0])
+                mean_i, log_var_i = output_i
+
+                # Evaluate ELBO for a given scale
+                flow_sample = self.reparam(mean_i, log_var_i)
+                energy_i = self.energy(flow_sample, img1_i, img2_i)
+                entropy_i = torch.sum(log_var_i, dim=(1, 2, 3)) / 2
+                mean_elbo_i = energy_i.mean() - entropy_i.mean()
+
+                # Cummulate
+                total_loss += self._weights[i] * mean_elbo_i
+                loss_dict["epe%i" % (i + 2)] = mean_elbo_i
+
+            loss_dict["total_loss"] = total_loss
+        else:
+            mean, log_var = output_dict["flow1"]
+
+            # Evaluate -ELBO
+            flow_sample = self.reparam(mean, log_var)
+            energy = self.energy(flow_sample, img1, img2)
+            entropy = torch.sum(log_var, dim=(1, 2, 3)) / 2
+            mean_elbo = energy.mean() - entropy.mean()
+            loss_dict["elbo"] = mean_elbo
+
+            # Evaluate EPE
+            epe = elementwise_epe(mean, target)
+            mean_epe = epe.mean()
+            loss_dict["epe"] = mean_epe
+
+            # Evaluate log-likelihood -2 log q(w=w_true|F, G, theta)
+            err = target - mean
+            llh = np.log(2*np.pi) + log_var + (err**2) / torch.exp(log_var)
+            loss_dict["llh"] = llh.mean()
+
+        return loss_dict
+

@@ -10,3 +10,4 @@ MultiScaleEPE = endpoint_error.MultiScaleEPE
 MultiScaleLaplacian = probabilistic_endpoint_error.MultiScaleLaplacian
 EPE = endpoint_error.EPE
 Elbo = elbo_loss.Elbo
+MultiScaleElbo = elbo_loss.MultiScaleElbo
