@@ -1,10 +1,10 @@
 #!/bin/bash
+# Please define environment variable FLYINGCHAIRS_HOME before running this script
 
 TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT=None
-FLYINGCHAIRS_HOME=/fastdata/FlyingChairs_release/data/
 MODEL=FlowNetADF
 PREFIX=train-flyingchairs
 SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"

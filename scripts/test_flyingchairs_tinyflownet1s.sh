@@ -1,10 +1,10 @@
 #!/bin/bash
+# Please define environment variable FLYINGCHAIRS_HOME before running this script
 
 TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT="$PWD/../output/TinyFlowNet1S-20230113-225922-train-flyingchairs/checkpoint_best_epe.ckpt"
-FLYINGCHAIRS_HOME=/home/deu/FlyingChairs_release/downscaled_data
 MODEL=TinyFlowNet1S
 PREFIX="test-flyingchairs"
 TIME=$(date +"%Y%m%d-%H%M%S")

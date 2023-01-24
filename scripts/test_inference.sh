@@ -1,9 +1,8 @@
 #!/bin/bash
-
+# Please define environment variable SINTEL_HOME before running this script
 
 # meta
 CHECKPOINT="$PWD/../pretrained/flownet_adf.ckpt"  # set this to your trained model file
-SINTEL_HOME=/home/deu/Sintel
 MODEL=FlowNetADF
 
 # validate clean configuration

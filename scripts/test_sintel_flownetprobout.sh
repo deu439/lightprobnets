@@ -1,9 +1,8 @@
 #!/bin/bash
-
+# Please define environment variable SINTEL_HOME before running this script
 
 # meta
 CHECKPOINT="$PWD/../output/,,.checkpoint.ckpt"  # set this to your trained model file
-SINTEL_HOME=/fastdata/MPI-Sintel-complete/
 MODEL=FlowNetProbOut
 
 # validate clean configuration

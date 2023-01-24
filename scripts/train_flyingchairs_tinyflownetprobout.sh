@@ -1,10 +1,10 @@
 #!/bin/bash
+# Please define environment variable TINYFLYINGCHAIRS_HOME before running this script
 
 TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT=None
-FLYINGCHAIRS_HOME=/home/deu/FlyingChairs_release/downscaled_data
 MODEL=TinyFlowNetProbout
 PREFIX="train-flyingchairs"
 TIME=$(date +"%Y%m%d-%H%M%S")
@@ -33,9 +33,9 @@ python ../main.py \
 --training_dataset=TinyFlyingChairsTrain \
 --training_dataset_num_examples=-1 \
 --training_dataset_photometric_augmentations=True \
---training_dataset_root=$FLYINGCHAIRS_HOME \
+--training_dataset_root=$TINYFLYINGCHAIRS_HOME \
 --training_key=elbo \
 --validation_dataset=TinyFlyingChairsValid  \
---validation_dataset_root=$FLYINGCHAIRS_HOME \
+--validation_dataset_root=$TINYFLYINGCHAIRS_HOME \
 --validation_keys="[epe]" \
 --validation_keys_minimize="[True]"
