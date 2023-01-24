@@ -1,5 +1,10 @@
 #!/bin/bash
-# Please define environment variable SINTEL_HOME before running this script
+
+# Check whether SINTEL_HOME is defined and points to an existing directory
+if [ ! -d "$SINTEL_HOME" ]; then
+  echo "Please define environment variable SINTEL_HOME that points to the dataset's home directory."
+  exit
+fi
 
 # meta
 CHECKPOINT="$PWD/../pretrained/flownet_adf.ckpt"  # set this to your trained model file

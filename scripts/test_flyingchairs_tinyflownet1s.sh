@@ -1,5 +1,10 @@
 #!/bin/bash
-# Please define environment variable FLYINGCHAIRS_HOME before running this script
+
+# Check whether TINYFLYINGCHAIRS_HOME is defined and points to an existing directory
+if [ ! -d "$TINYFLYINGCHAIRS_HOME" ]; then
+  echo "Please define environment variable TINYFLYINGCHAIRS_HOME that points to the dataset's home directory."
+  exit
+fi
 
 TIME=$(date +"%Y%m%d-%H%M%S")
 
@@ -21,5 +26,5 @@ python ../main.py \
 --save=$SAVE_PATH \
 --loss=EPE \
 --validation_dataset=TinyFlyingChairsValid  \
---validation_dataset_root=$FLYINGCHAIRS_HOME \
+--validation_dataset_root=$TINYFLYINGCHAIRS_HOME \
 --validation_keys="[epe]"

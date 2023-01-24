@@ -1,5 +1,10 @@
 #!/bin/bash
-# Please define environment variable FLYINGCHAIRS_HOME before running this script
+
+# Check whether FLYINGCHAIRS_HOME is defined and points to an existing directory
+if [ ! -d "$FLYINGCHAIRS_HOME" ]; then
+  echo "Please define environment variable FLYINGCHAIRS_HOME that points to the dataset's home directory."
+  exit
+fi
 
 TIME=$(date +"%Y%m%d-%H%M%S")
 
