@@ -17,7 +17,7 @@ SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
 
 # training configuration
 python ../main.py \
---batch_size=7 \
+--batch_size=10 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
@@ -25,7 +25,7 @@ python ../main.py \
 --loss=Elbo \
 --loss_alpha=1.0 \
 --loss_beta=1.0 \
---loss_Nsamples=2 \
+--loss_Nsamples=1 \
 --model=$MODEL \
 --num_workers=12 \
 --optimizer=Adam \

@@ -15,7 +15,7 @@ from . import transforms
 from . import common
 
 
-VALIDATE_INDICES = np.arange(5001, 5501)
+VALIDATE_INDICES = np.arange(5000, 5500)
 
 
 class TinyFlyingChairs(data.Dataset):
