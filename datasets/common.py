@@ -20,7 +20,7 @@ def numpy2torch(array):
 
 
 def deterministic_indices(k, n, seed):
-    indices = range(n)
+    indices = np.arange(n)#range(n)
     random.Random(seed).shuffle(indices)
     return sorted(indices[0:k])
 
