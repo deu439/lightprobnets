@@ -6,20 +6,28 @@ if [ ! -d "$FLYINGCHAIRS_HOME" ]; then
   exit
 fi
 
-TIME=$(date +"%Y%m%d-%H%M%S")
-
 # meta
-CHECKPOINT=None
+LOSS=MultiScaleLaplacian
 MODEL=FlowNetProbOut
 PREFIX=train-flyingchairs
-SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
+
+# Set SAVE_PATH if not already set
+if [[ "$SAVE_PATH" == "" ]]; then
+  TIME=$(date +"%Y%m%d-%H%M%S")
+  SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
+fi
+
+# Set CHECKPOINT if not already set
+if [[ "$CHECKPOINT" == "" ]]; then
+  CHECKPOINT=None
+fi
 
 # training configuration
 python ../main.py \
 --batch_size=8 \
 --checkpoint=$CHECKPOINT \
 --logging_model_graph=True \
---loss=MultiScaleLaplacian \
+--loss=$LOSS \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \
