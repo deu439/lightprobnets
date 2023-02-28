@@ -94,6 +94,9 @@ class TqdmToLogger(tqdm.tqdm):
         self._logging_on_update = logging_on_update
         self._closed = False
 
+    def __repr__(self):
+        return self.format_meter(**self.format_dict)
+
     @staticmethod
     def format_meter(n, total, elapsed, ncols=None, nrows=None, prefix='', ascii=False,
                      unit='it', unit_scale=False, rate=None, bar_format=None,
