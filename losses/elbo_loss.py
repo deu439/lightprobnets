@@ -58,12 +58,12 @@ class Elbo(nn.Module):
 
         # Warp img2 according to flow
         img2_warp = self._resample2d(img2, flow.contiguous())
-        A = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)
-        data_term = torch.sum(penalty(A), dim=(1, 2))
+        A = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)     # Sum over channels
+        data_term = torch.mean(penalty(A), dim=(1, 2))                                  # Average over pixels
 
         B = F.pad(torch.sum(F.conv2d(flow, self._kernel_dx)**2, dim=1), (0,1,0,0)) \
-            + F.pad(torch.sum(F.conv2d(flow, self._kernel_dy)**2, dim=1), (0,0,0,1))
-        smooth_term = torch.sum(penalty(B), dim=(1, 2))
+            + F.pad(torch.sum(F.conv2d(flow, self._kernel_dy)**2, dim=1), (0,0,0,1))    # Sum over channels
+        smooth_term = torch.mean(penalty(B), dim=(1, 2))                                # Average over pixels
 
         return self._alpha * data_term + self._beta * smooth_term
 
@@ -77,8 +77,9 @@ class Elbo(nn.Module):
         # Evaluate ELBO
         flow_sample = self.reparam(mean, log_var)
         energy = self.energy(flow_sample, img1, img2)
-        entropy = torch.sum(log_var, dim=(1,2,3))/2
-        mean_elbo = energy.mean() - entropy.mean()
+        entropy = torch.sum(log_var, dim=1)/2       # Sum over components
+        entropy = torch.mean(entropy, dim=(1,2))    # Average over pixels
+        mean_elbo = energy.mean() - entropy.mean()  # Average over minibatch
         loss_dict["elbo"] = mean_elbo
 
         # Calculate epe for validation
@@ -134,11 +135,12 @@ class MultiScaleElbo(Elbo):
                 img2_i = downsample2d_as(img2, output_i[0])
                 mean_i, log_var_i = output_i
 
-                # Evaluate ELBO for a given scale
+                # Evaluate -ELBO for a given scale
                 flow_sample = self.reparam(mean_i, log_var_i)
                 energy_i = self.energy(flow_sample, img1_i, img2_i)
-                entropy_i = torch.sum(log_var_i, dim=(1, 2, 3)) / 2
-                mean_elbo_i = energy_i.mean() - entropy_i.mean()
+                entropy_i = torch.sum(log_var_i, dim=1)/2           # Sum over components
+                entropy_i = torch.mean(entropy_i, dim=(1, 2))       # Average over pixels
+                mean_elbo_i = energy_i.mean() - entropy_i.mean()    # Average over minibatch
 
                 # Cummulate
                 total_loss += self._weights[i] * mean_elbo_i
@@ -151,8 +153,9 @@ class MultiScaleElbo(Elbo):
             # Evaluate -ELBO
             flow_sample = self.reparam(mean, log_var)
             energy = self.energy(flow_sample, img1, img2)
-            entropy = torch.sum(log_var, dim=(1, 2, 3)) / 2
-            mean_elbo = energy.mean() - entropy.mean()
+            entropy = torch.sum(log_var, dim=1) / 2          # Sum over components
+            entropy = torch.sum(log_var, dim=(1, 2))         # Average over pixels
+            mean_elbo = energy.mean() - entropy.mean()       # Average over minibatch
             loss_dict["elbo"] = mean_elbo
 
             # Evaluate EPE
