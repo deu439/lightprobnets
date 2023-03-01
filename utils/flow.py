@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import torch
 
 TAG_CHAR = np.array([202021.25], np.float32)
 
@@ -74,3 +75,14 @@ def np_flow2rgb(flow_map, max_value=None):
     rgb_map[:, :, 1] -= 0.5 * (normalized_flow_map[0] + normalized_flow_map[1])
     rgb_map[:, :, 2] += normalized_flow_map[1]
     return rgb_map.clip(0, 1)
+
+
+def torch_flow2rgb(tensor):
+    batch_size, channels, height, width = tensor.size()
+    assert(channels == 2)
+    array = np.empty((batch_size, height, width, 3))
+    for i in range(batch_size):
+        flow = np.array(tensor[i, :, :, :])
+        array[i, :, :, :] = np_flow2rgb(flow)
+
+    return torch.Tensor(np.transpose(array, (0, 3, 1, 2)))

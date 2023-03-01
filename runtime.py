@@ -13,8 +13,9 @@ import logger
 from holistic_records import EpochRecorder
 from utils.moving_averages import MovingAverage
 
-#import matplotlib.pyplot as plt
-#import flow_vis
+import os
+from torch.utils.tensorboard import SummaryWriter
+from utils.flow import torch_flow2rgb
 
 # --------------------------------------------------------------------------------
 # Exponential moving average smoothing factor for speed estimates
@@ -353,13 +354,6 @@ class EvaluationEpoch:
                 # Perform forward evaluation step
                 # ---------------------------------------
                 loss_dict_per_step, output_dict, batch_size = self._step(example_dict)
-                #u = np.array(output_dict['flow1'][0][0, 0, :, :])
-                #v = np.array(output_dict['flow1'][0][0, 1, :, :])
-                #mx = np.max(np.sqrt(u**2 + v**2))
-                #flow_color = flow_vis.flow_uv_to_colors(u / mx, v / mx, convert_to_bgr=False)
-                #plt.imshow(flow_color)
-                #plt.show()
-                
 
                 # ---------------------------------------
                 # recorder
@@ -403,7 +397,7 @@ class EvaluationEpoch:
         # -------------------------------------------------------------
         # Return average losses and output dictionary
         # -------------------------------------------------------------
-        return avg_loss_dict, output_dict
+        return avg_loss_dict, output_dict, example_dict
 
 
 def exec_runtime(args,
@@ -418,6 +412,10 @@ def exec_runtime(args,
                  inference_loader,
                  training_augmentation,
                  validation_augmentation):
+
+    # Initialize TensorBoard writer
+    writer = SummaryWriter(os.path.join(args.save, 'tensorboard'))
+
     # ----------------------------------------------------------------------------------------------
     # Validation schedulers are a bit special:
     # They want to be called with a validation loss..
@@ -498,6 +496,9 @@ def exec_runtime(args,
                     loader=train_loader,
                     augmentation=training_augmentation).run()
 
+            # Training losses
+            writer.add_scalars('train', avg_loss_dict, epoch)
+
             # -------------------------------------------
             # Create and run a validation epoch
             # -------------------------------------------
@@ -509,7 +510,7 @@ def exec_runtime(args,
                     args, epoch=epoch, loader=validation_loader)
 
                 with torch.no_grad():
-                    avg_loss_dict, output_dict = EvaluationEpoch(
+                    avg_loss_dict, output_dict, example_dict = EvaluationEpoch(
                         args,
                         desc="Validate",
                         device=device,
@@ -518,6 +519,27 @@ def exec_runtime(args,
                         loader=validation_loader,
                         recorder=epoch_recorder,
                         augmentation=validation_augmentation).run()
+
+                # ----------------------------------------------------------------
+                # Record validation stats to the TensorBoard
+                # ----------------------------------------------------------------
+                if type(output_dict['flow1']) is tuple:     # Probabilistic network: flow + log-variance
+                    image = torch_flow2rgb(output_dict['flow1'][0].cpu())
+                    writer.add_images('estimate', image, epoch)
+                    uncertainty = torch.sum(output_dict['flow1'][1], axis=1)
+                    uncertainty -= torch.min(uncertainty)
+                    uncertainty /= torch.max(uncertainty)
+                    writer.add_images('uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
+                else:                                       # Deterministic network: flow
+                    image = torch_flow2rgb(output_dict['flow1'].cpu())
+                    writer.add_images('estimate', image, epoch)
+
+                # Ground-truth
+                image = torch_flow2rgb(example_dict['target1'].cpu())
+                writer.add_images('ground-truth', image, epoch)
+
+                # Validation losses
+                writer.add_scalars('valid', avg_loss_dict, epoch)
 
                 # ----------------------------------------------------------------
                 # Evaluate valdiation losses
@@ -574,3 +596,4 @@ def exec_runtime(args,
     # ----------------------------------------------------------------
     total_progress.close()
     logging.info("Finished.")
+    writer.close()
