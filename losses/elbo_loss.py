@@ -142,7 +142,7 @@ class MultiScaleElbo(Elbo):
 
                 # Cummulate
                 total_loss += self._weights[i] * mean_elbo_i
-                loss_dict["epe%i" % (i + 2)] = mean_elbo_i
+                loss_dict["elbo%i" % (i + 2)] = mean_elbo_i
 
             loss_dict["total_loss"] = total_loss
         else:

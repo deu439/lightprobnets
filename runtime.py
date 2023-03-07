@@ -523,20 +523,28 @@ def exec_runtime(args,
                 # ----------------------------------------------------------------
                 # Record validation stats to the TensorBoard
                 # ----------------------------------------------------------------
-                if type(output_dict['flow1']) is tuple:     # Probabilistic network: flow + log-variance
-                    image = torch_flow2rgb(output_dict['flow1'][0].cpu())
-                    writer.add_images('estimate', image, epoch)
-                    uncertainty = torch.sum(output_dict['flow1'][1], axis=1)
-                    uncertainty -= torch.min(uncertainty)
-                    uncertainty /= torch.max(uncertainty)
-                    writer.add_images('uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
-                else:                                       # Deterministic network: flow
-                    image = torch_flow2rgb(output_dict['flow1'].cpu())
-                    writer.add_images('estimate', image, epoch)
+                overall_dict = {**output_dict, **example_dict}
+                for key, item in overall_dict.items():
+                    item = item.cpu()  # Move item to cpu
 
-                # Ground-truth
-                image = torch_flow2rgb(example_dict['target1'].cpu())
-                writer.add_images('ground-truth', image, epoch)
+                    if key == 'flow1':
+                        if type(item) is tuple:     # Probabilistic network: flow + log-variance
+                            image = torch_flow2rgb(item[0].cpu())
+                            writer.add_images('estimate', image, epoch)
+                            uncertainty = torch.sum(item[1], axis=1)
+                            umin = torch.min(uncertainty)
+                            umax = torch.max(uncertainty)
+                            uncertainty -= torch.min(uncertainty)
+                            uncertainty /= torch.max(uncertainty)
+                            writer.add_images('uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
+                            writer.add_scalars('uncertainty_stats', {'min': umin, 'max': umax})
+                        else:                       # Deterministic network: flow
+                            image = torch_flow2rgb(item)
+                            writer.add_images('estimate', image, epoch)
+
+                    if key == 'target1':
+                        image = torch_flow2rgb(example_dict['target1'].cpu())
+                        writer.add_images('ground-truth', image, epoch)
 
                 # Validation losses
                 writer.add_scalars('valid', avg_loss_dict, epoch)
