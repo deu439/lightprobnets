@@ -8,7 +8,7 @@ fi
 
 # meta
 LOSS=MultiScaleElbo
-MODEL=FlowNetProbOut
+MODEL=FlowNetProbOutCustom
 PREFIX=train-flyingchairs
 
 # Set SAVE_PATH if not already set
@@ -24,7 +24,7 @@ fi
 
 # training configuration
 python ../main.py \
---batch_size=8 \
+--batch_size=16 \
 --checkpoint=$CHECKPOINT \
 --logging_model_graph=True \
 --loss=$LOSS \

@@ -7,7 +7,7 @@ import models.allconvnet_probout
 import models.allconvnet_adf
 import models.tinyflownet1s
 import models.tinyflownet1s_probout
-
+import models.flownet_probout_custom
 
 AllConvNetADF = allconvnet_adf.AllConvNetADF
 AllConvNetProbOut = allconvnet_probout.AllConvNetProbOut
@@ -18,3 +18,4 @@ LeNetProbOut = lenet_probout.LeNetProbOut
 LeNetADF = lenet_adf.LeNetADF
 TinyFlowNet1S = tinyflownet1s.TinyFlowNet1S
 TinyFlowNetProbout = tinyflownet1s_probout.TinyFlowNetProbout
+FlowNetProbOutCustom = flownet_probout_custom.FlowNetProbOut
