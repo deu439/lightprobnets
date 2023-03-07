@@ -5,3 +5,4 @@ colorama
 imageio
 pytz
 tqdm
+tensorboard
