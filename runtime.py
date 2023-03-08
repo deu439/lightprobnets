@@ -525,8 +525,6 @@ def exec_runtime(args,
                 # ----------------------------------------------------------------
                 overall_dict = {**output_dict, **example_dict}
                 for key, item in overall_dict.items():
-                    item = item.cpu()  # Move item to cpu
-
                     if key == 'flow1':
                         if type(item) is tuple:     # Probabilistic network: flow + log-variance
                             image = torch_flow2rgb(item[0].cpu())
@@ -539,11 +537,11 @@ def exec_runtime(args,
                             writer.add_images('uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
                             writer.add_scalars('uncertainty_stats', {'min': umin, 'max': umax})
                         else:                       # Deterministic network: flow
-                            image = torch_flow2rgb(item)
+                            image = torch_flow2rgb(item.cpu())
                             writer.add_images('estimate', image, epoch)
 
                     if key == 'target1':
-                        image = torch_flow2rgb(example_dict['target1'].cpu())
+                        image = torch_flow2rgb(item.cpu())
                         writer.add_images('ground-truth', image, epoch)
 
                 # Validation losses
