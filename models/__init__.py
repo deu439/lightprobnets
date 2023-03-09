@@ -18,4 +18,4 @@ LeNetProbOut = lenet_probout.LeNetProbOut
 LeNetADF = lenet_adf.LeNetADF
 TinyFlowNet1S = tinyflownet1s.TinyFlowNet1S
 TinyFlowNetProbout = tinyflownet1s_probout.TinyFlowNetProbout
-FlowNetProbOutCustom = flownet_probout_custom.FlowNetProbOut
+FlowNetProbOutCustom = flownet_probout_custom.FlowNetProbOutCustom

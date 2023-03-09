@@ -8,11 +8,10 @@ from .flownet1s import FlowNetS
 from .flownet_helpers import upsample2d_as
 
 
-class FlowNetProbOut(nn.Module):
-    def __init__(self, args, div_flow=0.05, min_variance=1e-3, log_variance=True):
-        super(FlowNetProbOut, self).__init__()
+class FlowNetProbOutCustom(nn.Module):
+    def __init__(self, args, min_variance=1e-3, log_variance=True):
+        super(FlowNetProbOutCustom, self).__init__()
         self._flownets = FlowNetS(args, num_pred=4)
-        self._div_flow = div_flow
 
     def forward(self, input_dict):
         im1 = input_dict['input1']
