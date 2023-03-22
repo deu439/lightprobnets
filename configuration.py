@@ -410,7 +410,7 @@ def configure_data_loaders(args):
                 train_dataset,
                 batch_size=args.batch_size,
                 shuffle=True,
-                drop_last=False,
+                drop_last=True,
                 **gpuargs)
 
             _log_statistics(train_dataset, prefix="Training", name=args.training_dataset)
@@ -438,7 +438,7 @@ def configure_data_loaders(args):
                 validation_dataset,
                 batch_size=args.batch_size,
                 shuffle=False,
-                drop_last=False,
+                drop_last=True,
                 **gpuargs)
 
             _log_statistics(validation_dataset, prefix="Validation", name=args.validation_dataset)
