@@ -56,7 +56,8 @@ class Elbo(nn.Module):
         img2: tensor of size (batch, 3, height, width)
         """
 
-        # Warp img2 according to flow
+        # Warp img2 according to flow - on cpu-located tensors warping module fails without warning!
+        assert(img2.is_cuda and flow.is_cuda)
         img2_warp = self._resample2d(img2, flow.contiguous())
         A = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)
         data_term = torch.sum(penalty(A), dim=(1, 2))
@@ -130,9 +131,17 @@ class MultiScaleElbo(Elbo):
 
             total_loss = 0
             for i, output_i in enumerate(outputs):
+                yscale = output_i[0].size(2) / img1.size(2)
+                xscale = output_i[0].size(3) / img1.size(3)
                 img1_i = downsample2d_as(img1, output_i[0])
                 img2_i = downsample2d_as(img2, output_i[0])
                 mean_i, log_var_i = output_i
+
+                # Scale flow and variance
+                mean_i[:, :, 0, :] *= xscale
+                mean_i[:, :, 1, :] *= yscale
+                log_var_i[:, :, 0, :] += 2*torch.log(xscale)
+                log_var_i[:, :, 1, :] += 2*torch.log(yscale)
 
                 # Evaluate ELBO for a given scale
                 flow_sample = self.reparam(mean_i, log_var_i)
