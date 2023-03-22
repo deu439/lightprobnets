@@ -138,10 +138,9 @@ class MultiScaleElbo(Elbo):
                 mean_i, log_var_i = output_i
 
                 # Scale flow and variance
-                mean_i[:, :, 0, :] *= xscale
-                mean_i[:, :, 1, :] *= yscale
-                log_var_i[:, :, 0, :] += 2*torch.log(xscale)
-                log_var_i[:, :, 1, :] += 2*torch.log(yscale)
+                scale = torch.tensor([xscale, yscale]).cuda()
+                mean_i = mean_i * scale[None, :, None, None]
+                log_var_i = log_var_i + 2*torch.log(scale)[None, :, None, None]
 
                 # Evaluate ELBO for a given scale
                 flow_sample = self.reparam(mean_i, log_var_i)
