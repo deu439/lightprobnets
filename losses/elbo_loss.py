@@ -98,10 +98,12 @@ class MultiScaleElbo(Elbo):
                  coarsest_resolution_loss_weight=0.32,
                  alpha=1.0,
                  beta=1.0,
-                 Nsamples=1):
+                 Nsamples=1,
+                 scale_var=True):
 
         super(MultiScaleElbo, self).__init__(args=args, alpha=alpha, beta=beta, Nsamples=Nsamples)
         self._num_scales = num_scales
+        self._scale_var = scale_var
 
         # ---------------------------------------------------------------------
         # start with initial scale
@@ -140,7 +142,8 @@ class MultiScaleElbo(Elbo):
                 # Scale flow and variance
                 scale = torch.tensor([xscale, yscale]).cuda()
                 mean_i = mean_i * scale[None, :, None, None]
-                log_var_i = log_var_i + 2*torch.log(scale)[None, :, None, None]
+                if self._scale_var:
+                    log_var_i = log_var_i + 2*torch.log(scale)[None, :, None, None]
 
                 # Evaluate ELBO for a given scale
                 flow_sample = self.reparam(mean_i, log_var_i)
