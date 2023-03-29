@@ -17,7 +17,7 @@ def penalty(x):
 
 
 class Elbo(nn.Module):
-    def __init__(self, args, alpha=1.0, beta=1.0, Nsamples=1):
+    def __init__(self, args, alpha=1.0, beta=1.0, Nsamples=1, entropy_weight=1.0):
 
         super(Elbo, self).__init__()
         self._args = args
@@ -27,6 +27,7 @@ class Elbo(nn.Module):
         self._Nsamples = Nsamples
         self._alpha = alpha
         self._beta = beta
+        self._entropy_weight = entropy_weight
         self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
         kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
@@ -79,7 +80,7 @@ class Elbo(nn.Module):
         flow_sample = self.reparam(mean, log_var)
         energy = self.energy(flow_sample, img1, img2)
         entropy = torch.sum(log_var, dim=(1,2,3))/2
-        mean_elbo = energy.mean() - entropy.mean()
+        mean_elbo = energy.mean() - self._entropy_weight * entropy.mean()
         loss_dict["elbo"] = mean_elbo
 
         # Calculate epe for validation
@@ -99,9 +100,10 @@ class MultiScaleElbo(Elbo):
                  alpha=1.0,
                  beta=1.0,
                  Nsamples=1,
-                 scale_var=True):
+                 scale_var=True,
+                 entropy_weight=1.0):
 
-        super(MultiScaleElbo, self).__init__(args=args, alpha=alpha, beta=beta, Nsamples=Nsamples)
+        super(MultiScaleElbo, self).__init__(args=args, alpha=alpha, beta=beta, Nsamples=Nsamples, entropy_weight=entropy_weight)
         self._num_scales = num_scales
         self._scale_var = scale_var
 
@@ -149,7 +151,7 @@ class MultiScaleElbo(Elbo):
                 flow_sample = self.reparam(mean_i, log_var_i)
                 energy_i = self.energy(flow_sample, img1_i, img2_i)
                 entropy_i = torch.sum(log_var_i, dim=(1, 2, 3)) / 2
-                mean_elbo_i = energy_i.mean() - entropy_i.mean()
+                mean_elbo_i = energy_i.mean() - self._entropy_weight*entropy_i.mean()
 
                 # Cummulate
                 total_loss += self._weights[i] * mean_elbo_i
