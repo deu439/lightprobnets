@@ -7,7 +7,7 @@ if [ ! -d "$FLYINGCHAIRS_HOME" ]; then
 fi
 
 # meta
-LOSS=Elbo
+LOSS=MultiScaleElbo
 MODEL=FlowNetProbOutCustom
 PREFIX=train-flyingchairs
 
@@ -30,6 +30,7 @@ python ../main.py \
 --loss=$LOSS \
 --loss_alpha=1.0 \
 --loss_beta=1.0 \
+--loss_scale_var=False \
 --loss_Nsamples=1 \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
@@ -47,8 +48,8 @@ python ../main.py \
 --training_dataset_num_examples=-1 \
 --training_dataset_photometric_augmentations=True \
 --training_dataset_root=$FLYINGCHAIRS_HOME \
---training_key=elbo \
+--training_key=total_loss \
 --validation_dataset=FlyingChairsValid  \
 --validation_dataset_root=$FLYINGCHAIRS_HOME \
---validation_keys="[elbo, epe]" \
---validation_keys_minimize="[True, False]"
+--validation_keys="[elbo, epe, llh]" \
+--validation_keys_minimize="[True, False, False]"
