@@ -535,7 +535,7 @@ def exec_runtime(args,
                             uncertainty -= torch.min(uncertainty)
                             uncertainty /= torch.max(uncertainty)
                             writer.add_images('uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
-                            writer.add_scalars('uncertainty_stats', {'min': umin, 'max': umax})
+                            writer.add_scalars('uncertainty_stats', {'min': umin, 'max': umax}, epoch)
                         else:                       # Deterministic network: flow
                             image = torch_flow2rgb(item.cpu())
                             writer.add_images('estimate', image, epoch)
@@ -543,6 +543,19 @@ def exec_runtime(args,
                     if key == 'target1':
                         image = torch_flow2rgb(item.cpu())
                         writer.add_images('ground-truth', image, epoch)
+
+                    if key == 'flow_neg':
+                        image = torch_flow2rgb(item.cpu())
+                        writer.add_images('flow_neg', image, epoch)
+
+                    if key == 'img1_neg':
+                        writer.add_images('img1_neg', item.cpu(), epoch)
+
+                    if key == 'img2_neg':
+                        writer.add_images('img2_neg', item.cpu(), epoch)
+
+                    if key == 'weights':
+                        writer.add_scalars('weights', item, epoch)
 
                 # Validation losses
                 writer.add_scalars('valid', avg_loss_dict, epoch)
