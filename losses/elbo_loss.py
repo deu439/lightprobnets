@@ -84,7 +84,7 @@ class Elbo(nn.Module):
         img1_gx = F.conv2d(img1, self._kernel_gx, padding=(0, 2))
         img1_gy = F.conv2d(img1, self._kernel_gy, padding=(2, 0))
         img2_warp_gx = F.conv2d(img2_warp, self._kernel_gx, padding=(0, 2))
-        img2_warp_gy = F.conv2d(img2_warp, self._kernel_gy, padding=(0, 2))
+        img2_warp_gy = F.conv2d(img2_warp, self._kernel_gy, padding=(2, 0))
         C = torch.sum(img1_gx.repeat(self._Nsamples, 1, 1, 1) - img2_warp_gx, dim=1) \
             + torch.sum(img1_gy.repeat(self._Nsamples, 1, 1, 1) - img2_warp_gy, dim=1)
         gradient_term = torch.sum(penalty(C), dim=(1, 2))
