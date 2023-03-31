@@ -30,6 +30,7 @@ python ../main.py \
 --loss=$LOSS \
 --loss_alpha=1.0 \
 --loss_beta=1.0 \
+--loss_gamma=1.0 \
 --loss_Nsamples=1 \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \

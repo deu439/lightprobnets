@@ -17,7 +17,7 @@ def penalty(x):
 
 
 class Elbo(nn.Module):
-    def __init__(self, args, alpha=1.0, beta=1.0, Nsamples=1, entropy_weight=1.0):
+    def __init__(self, args, alpha=1.0, beta=1.0, gamma=1.0, Nsamples=1, entropy_weight=1.0):
 
         super(Elbo, self).__init__()
         self._args = args
@@ -27,6 +27,7 @@ class Elbo(nn.Module):
         self._Nsamples = Nsamples
         self._alpha = alpha
         self._beta = beta
+        self._gamma = gamma
         self._entropy_weight = entropy_weight
         self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
@@ -35,6 +36,19 @@ class Elbo(nn.Module):
         # Buffers are moved to GPU together with the parent module
         self.register_buffer('_kernel_dx', kernel_dx)
         self.register_buffer('_kernel_dy', kernel_dy)
+        # Convolution kernels for derivatives of the images
+        kernel_gx = torch.tensor([
+            [[[-1 / 12, 2 / 3, 0, -2 / 3, 1 / 12]], [[0, 0, 0, 0, 0]], [[0, 0, 0, 0, 0]]],
+            [[[0, 0, 0, 0, 0]], [[-1 / 12, 2 / 3, 0, -2 / 3, 1 / 12]], [[0, 0, 0, 0, 0]]],
+            [[[0, 0, 0, 0, 0]], [[0, 0, 0, 0, 0]], [[-1 / 12, 2 / 3, 0, -2 / 3, 1 / 12]]]
+        ], dtype=torch.float32)
+        kernel_gy = torch.tensor([
+            [[[-1 / 12], [2 / 3], [0], [-2 / 3], [1 / 12]], [[0], [0], [0], [0], [0]], [[0], [0], [0], [0], [0]]],
+            [[[0], [0], [0], [0], [0]], [[-1 / 12], [2 / 3], [0], [-2 / 3], [1 / 12]], [[0], [0], [0], [0], [0]]],
+            [[[0], [0], [0], [0], [0]], [[0], [0], [0], [0], [0]], [[-1 / 12], [2 / 3], [0], [-2 / 3], [1 / 12]]]
+        ], dtype=torch.float32)
+        self.register_buffer('_kernel_gx', kernel_gx)
+        self.register_buffer('_kernel_gy', kernel_gy)
 
     # Reparametrization trick
     def reparam(self, mean, log_var):
@@ -67,7 +81,15 @@ class Elbo(nn.Module):
             + F.pad(torch.sum(F.conv2d(flow, self._kernel_dy)**2, dim=1), (0,0,0,1))
         smooth_term = torch.sum(penalty(B), dim=(1, 2))
 
-        return self._alpha * data_term + self._beta * smooth_term
+        img1_gx = F.conv2d(img1, self._kernel_gx, padding=(0, 2))
+        img1_gy = F.conv2d(img1, self._kernel_gy, padding=(2, 0))
+        img2_warp_gx = F.conv2d(img2_warp, self._kernel_gx, padding=(0, 2))
+        img2_warp_gy = F.conv2d(img2_warp, self._kernel_gy, padding=(0, 2))
+        C = torch.sum(img1_gx.repeat(self._Nsamples, 1, 1, 1) - img2_warp_gx, dim=1) \
+            + torch.sum(img1_gy.repeat(self._Nsamples, 1, 1, 1) - img2_warp_gy, dim=1)
+        gradient_term = torch.sum(penalty(C), dim=(1, 2))
+
+        return self._alpha * data_term + self._beta * smooth_term + self._gamma * gradient_term
 
     def forward(self, output_dict, target_dict):
         loss_dict = {}
@@ -99,11 +121,12 @@ class MultiScaleElbo(Elbo):
                  coarsest_resolution_loss_weight=0.32,
                  alpha=1.0,
                  beta=1.0,
+                 gamma=1.0,
                  Nsamples=1,
                  scale_var=True,
                  entropy_weight=1.0):
 
-        super(MultiScaleElbo, self).__init__(args=args, alpha=alpha, beta=beta, Nsamples=Nsamples, entropy_weight=entropy_weight)
+        super(MultiScaleElbo, self).__init__(args=args, alpha=alpha, beta=beta, gamma=gamma, Nsamples=Nsamples, entropy_weight=entropy_weight)
         self._num_scales = num_scales
         self._scale_var = scale_var
 
