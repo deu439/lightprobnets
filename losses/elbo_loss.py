@@ -11,6 +11,11 @@ from .endpoint_error import elementwise_epe
 from .resample2d_package.resample2d import Resample2d
 
 
+def upsample2d_as(inputs, target_as, mode="bilinear"):
+    _, _, h, w = target_as.size()
+    return F.interpolate(inputs, [h, w], mode=mode, align_corners=True)
+
+
 # Charbonnier penalty
 def penalty(x):
     return torch.sqrt(x + 1e-5)
@@ -203,3 +208,84 @@ class MultiScaleElbo(Elbo):
 
         return loss_dict
 
+
+class MultiScaleElboUpflow(Elbo):
+    def __init__(self,
+                 args,
+                 num_scales=5,
+                 num_highres_scales=2,
+                 coarsest_resolution_loss_weight=0.32,
+                 alpha=1.0,
+                 beta=1.0,
+                 gamma=1.0,
+                 Nsamples=1,
+                 entropy_weight=1.0):
+
+        super(MultiScaleElboUpflow, self).__init__(args=args, alpha=alpha, beta=beta, gamma=gamma, Nsamples=Nsamples, entropy_weight=entropy_weight)
+        self._num_scales = num_scales
+
+        # ---------------------------------------------------------------------
+        # start with initial scale
+        # for "low-resolution" scales we apply a scale factor of 4
+        # for "high-resolution" scales we apply a scale factor of 2
+        #
+        # e.g. for FlyingChairs  weights=[0.005, 0.01, 0.02, 0.08, 0.32]
+        # ---------------------------------------------------------------------
+        #self._weights = [coarsest_resolution_loss_weight]
+        #num_lowres_scales = num_scales - num_highres_scales
+        #for k in range(num_lowres_scales - 1):
+        #    self._weights += [self._weights[-1] / 4]
+        #for k in range(num_highres_scales):
+        #    self._weights += [self._weights[-1] / 2]
+        #self._weights.reverse()
+        self._weights = [1.0, 1.0, 1.0, 1.0, 1.0]
+        assert (len(self._weights) == num_scales)  # sanity check
+
+    # Override base class forward() method !
+    def forward(self, output_dict, target_dict):
+        loss_dict = {}
+        target = target_dict["target1"]
+        img1 = target_dict["input1"]
+        img2 = target_dict["input2"]
+
+        if self.training:
+            outputs = [output_dict[key] for key in ["flow2", "flow3", "flow4", "flow5", "flow6"]]
+
+            total_loss = 0
+            for i, output_i in enumerate(outputs):
+                mean_i, log_var_i = output_i
+                mean_i = upsample2d_as(mean_i, img1, mode="bilinear")
+                log_var_i = upsample2d_as(log_var_i, img1, mode="bilinear")
+
+                # Evaluate ELBO for a given scale
+                flow_sample = self.reparam(mean_i, log_var_i)
+                energy_i = self.energy(flow_sample, img1, img2)
+                entropy_i = torch.sum(log_var_i, dim=(1, 2, 3)) / 2
+                mean_elbo_i = energy_i.mean() - self._entropy_weight*entropy_i.mean()
+
+                # Cummulate
+                total_loss += self._weights[i] * mean_elbo_i
+                loss_dict["elbo%i" % (i + 2)] = mean_elbo_i
+
+            loss_dict["total_loss"] = total_loss
+        else:
+            mean, log_var = output_dict["flow1"]
+
+            # Evaluate -ELBO
+            flow_sample = self.reparam(mean, log_var)
+            energy = self.energy(flow_sample, img1, img2)
+            entropy = torch.sum(log_var, dim=(1, 2, 3)) / 2
+            mean_elbo = energy.mean() - entropy.mean()
+            loss_dict["elbo"] = mean_elbo
+
+            # Evaluate EPE
+            epe = elementwise_epe(mean, target)
+            mean_epe = epe.mean()
+            loss_dict["epe"] = mean_epe
+
+            # Evaluate log-likelihood -2 log q(w=w_true|F, G, theta)
+            err = target - mean
+            llh = np.log(2*np.pi) + log_var + (err**2) / torch.exp(log_var)
+            loss_dict["llh"] = llh.mean()
+
+        return loss_dict

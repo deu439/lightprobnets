@@ -13,3 +13,4 @@ EPE = endpoint_error.EPE
 Elbo = elbo_loss.Elbo
 MultiScaleElbo = elbo_loss.MultiScaleElbo
 ContrastiveLoss = contrastive_loss.ContrastiveLoss
+MultiScaleElboUpflow = elbo_loss.MultiScaleElboUpflow
