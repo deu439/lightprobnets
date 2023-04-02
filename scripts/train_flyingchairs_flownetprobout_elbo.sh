@@ -32,6 +32,7 @@ python ../main.py \
 --loss_beta=1.0 \
 --loss_gamma=1.0 \
 --loss_Nsamples=1 \
+--loss_mask_cost=0.0 \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \

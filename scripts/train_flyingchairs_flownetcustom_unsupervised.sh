@@ -26,6 +26,7 @@ python ../main.py \
 --loss_alpha=1.0 \
 --loss_beta=1.0 \
 --loss_gamma=1.0 \
+--loss_mask_cost=0.0 \
 --model=$MODEL \
 --num_workers=12 \
 --optimizer=Adam \
