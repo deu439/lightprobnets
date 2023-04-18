@@ -5,6 +5,7 @@ import losses.probabilistic_endpoint_error
 import losses.elbo_loss
 import losses.contrastive_loss
 import losses.unsupervised_loss
+import losses.elbo_loss_fb
 
 ClassificationLoss = classification_losses.ClassificationLoss
 DirichletProbOutLoss = probabilistic_classification_losses.DirichletProbOutLoss
@@ -16,3 +17,4 @@ MultiScaleElbo = elbo_loss.MultiScaleElbo
 ContrastiveLoss = contrastive_loss.ContrastiveLoss
 MultiScaleElboUpflow = elbo_loss.MultiScaleElboUpflow
 Unsupervised = unsupervised_loss.Unsupervised
+ElboFB = elbo_loss_fb.ElboFB

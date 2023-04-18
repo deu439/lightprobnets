@@ -10,6 +10,7 @@ import models.tinyflownet1s_probout
 import models.flownet_probout_custom
 import models.energy_model
 import models.flownet_custom
+import models.flownet_prob_fb
 
 AllConvNetADF = allconvnet_adf.AllConvNetADF
 AllConvNetProbOut = allconvnet_probout.AllConvNetProbOut
@@ -23,3 +24,4 @@ TinyFlowNetProbout = tinyflownet1s_probout.TinyFlowNetProbout
 FlowNetProbOutCustom = flownet_probout_custom.FlowNetProbOutCustom
 EnergyModel = energy_model.EnergyModel
 FlowNetCustom = flownet_custom.FlowNetCustom
+FlowNetProbFB = flownet_prob_fb.FlowNetProbFB
