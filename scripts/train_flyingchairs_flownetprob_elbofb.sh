@@ -24,14 +24,14 @@ fi
 
 # training configuration
 python ../main.py \
---batch_size=8 \
+--batch_size=16 \
 --checkpoint=$CHECKPOINT \
 --logging_model_graph=True \
 --loss=$LOSS \
 --loss_alpha=1.0 \
 --loss_beta=1.0 \
 --loss_gamma=1.0 \
---loss_delta=1.0 \
+--loss_delta=0.2 \
 --loss_Nsamples=1 \
 --loss_mask_cost=12.4 \
 --lr_scheduler=MultiStepLR \

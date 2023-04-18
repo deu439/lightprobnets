@@ -37,7 +37,7 @@ class FlowNetProbFB(nn.Module):
             output_dict['flow6f'] = flow6f.chunk(chunks=2, dim=1)
 
             # Backward flow =====
-            flow2b, flow3b, flow4b, flow5b, flow6b = self._flownets(inputf)
+            flow2b, flow3b, flow4b, flow5b, flow6b = self._flownets(inputb)
 
             # Upsample to get flow at full resolution
             flow2b_mean, flow2b_log_variance = flow2b.chunk(chunks=2, dim=1)

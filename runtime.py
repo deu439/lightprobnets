@@ -525,24 +525,24 @@ def exec_runtime(args,
                 # ----------------------------------------------------------------
                 overall_dict = {**output_dict, **example_dict}
                 for key, item in overall_dict.items():
-                    if key == 'flow1':
+                    if key == 'flow1' or key == 'flow1f' or key == 'flow1b':
                         if type(item) is tuple:     # Probabilistic network: flow + log-variance
                             image = torch_flow2rgb(item[0].cpu())
-                            writer.add_images('estimate', image, epoch)
+                            writer.add_images(key, image, epoch)
                             uncertainty = torch.sum(item[1], axis=1)
                             umin = torch.min(uncertainty)
                             umax = torch.max(uncertainty)
                             uncertainty -= torch.min(uncertainty)
                             uncertainty /= torch.max(uncertainty)
-                            writer.add_images('uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
-                            writer.add_scalars('uncertainty_stats', {'min': umin, 'max': umax}, epoch)
+                            writer.add_images(key + ' uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
+                            writer.add_scalars(key + ' uncertainty_stats', {'min': umin, 'max': umax}, epoch)
                         else:                       # Deterministic network: flow
                             image = torch_flow2rgb(item.cpu())
-                            writer.add_images('estimate', image, epoch)
+                            writer.add_images(key, image, epoch)
 
                     if key == 'target1':
                         image = torch_flow2rgb(item.cpu())
-                        writer.add_images('ground-truth', image, epoch)
+                        writer.add_images(key, image, epoch)
 
                     if key == 'flow_neg':
                         image = torch_flow2rgb(item.cpu())
