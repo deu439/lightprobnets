@@ -108,11 +108,11 @@ class ElboFB(nn.Module):
         magf = torch.sum(flowf**2 + flowb_warp**2, dim=1)
         flowf_diff = flowf + flowb_warp
         occf_thresh = 0.01*magf + 0.5
-        occf = torch.sum(flowf_diff**2, dim=1) <= occf_thresh
-        maskf = maskf * occf
+        occf = torch.sum(flowf_diff**2, dim=1) <= occf_thresh   # True if there is no occlusion
+        maskf = maskf & occf    # Combine to get only valid pixels
 
-        # Mask term
-        mask_termf = torch.sum(maskf, dim=(1, 2))
+        # Penalize occluded pixels to prevent trivial solutions
+        mask_termf = torch.sum(~maskf, dim=(1, 2))
 
         # Data term
         img2_warp = self._resample2d(img2, flowf)
@@ -142,11 +142,11 @@ class ElboFB(nn.Module):
         magb = torch.sum(flowb**2 + flowf_warp**2, dim=1)
         flowb_diff = flowb + flowf_warp
         occb_thresh = 0.01*magb + 0.5
-        occb = torch.sum(flowb_diff**2, dim=1) <= occb_thresh
-        maskb = maskb * occb
+        occb = torch.sum(flowb_diff**2, dim=1) <= occb_thresh   # True if there is no occlusion
+        maskb = maskb & occb    # Combine to get only valid pixels
 
-        # Mask term
-        mask_termb = torch.sum(maskb, dim=(1, 2))
+        # Penalize occluded pixels to prevent trivial solutions
+        mask_termb = torch.sum(~maskb, dim=(1, 2))
 
         # Data term
         img1_warp = self._resample2d(img1, flowb)
