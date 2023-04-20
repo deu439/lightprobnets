@@ -6,6 +6,7 @@ import losses.elbo_loss
 import losses.contrastive_loss
 import losses.unsupervised_loss
 import losses.elbo_loss_fb
+import losses.unsupervised_loss_fb
 
 ClassificationLoss = classification_losses.ClassificationLoss
 DirichletProbOutLoss = probabilistic_classification_losses.DirichletProbOutLoss
@@ -18,3 +19,4 @@ ContrastiveLoss = contrastive_loss.ContrastiveLoss
 MultiScaleElboUpflow = elbo_loss.MultiScaleElboUpflow
 Unsupervised = unsupervised_loss.Unsupervised
 ElboFB = elbo_loss_fb.ElboFB
+UnsupervisedFB = unsupervised_loss_fb.UnsupervisedFB
