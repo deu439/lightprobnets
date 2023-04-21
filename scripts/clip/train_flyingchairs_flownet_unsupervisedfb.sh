@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --qos=medium
-#SBATCH --time=2-00:00:00
+#SBATCH --time=3-00:00:00
 ## #SBATCH --nodes=1   # number of nodes
 ## #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1

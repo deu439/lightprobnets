@@ -21,6 +21,10 @@ def penalty(x):
     return torch.sqrt(x + 1e-5)
 
 
+def soft_threshold(x, t, mu=1.0):
+    return torch.special.expit(mu*(x-t))
+
+
 def border_mask(flow):
     """
     Generates a mask that is True for pixels whose correspondence is inside the image borders.
@@ -33,9 +37,11 @@ def border_mask(flow):
     X, Y = torch.meshgrid(x, y, indexing='xy')
     Xp = X.view(1, h, w).repeat(b, 1, 1) + flow[:, 0, :, :]
     Yp = Y.view(1, h, w).repeat(b, 1, 1) + flow[:, 1, :, :]
-    mask_x = (Xp > -0.5) & (Xp < w-0.5)
-    mask_y = (Yp > -0.5) & (Yp < h-0.5)
-    return mask_x & mask_y
+    #mask_x = (Xp > -0.5) & (Xp < w-0.5)
+    #mask_y = (Yp > -0.5) & (Yp < h-0.5)
+    mask_x = soft_threshold(Xp, -0.5) * (1.0 - soft_threshold(Xp, w - 0.5))
+    mask_y = soft_threshold(Yp, -0.5) * (1.0 - soft_threshold(Yp, h - 0.5))
+    return mask_x * mask_y
 
 
 class UnsupervisedFB(nn.Module):
@@ -90,11 +96,12 @@ class UnsupervisedFB(nn.Module):
         magf = torch.sum(flowf**2 + flowb_warp**2, dim=1)
         flowf_diff = flowf + flowb_warp
         occf_thresh = 0.01*magf + 0.5
-        occf = torch.sum(flowf_diff**2, dim=1) <= occf_thresh   # True if there is no occlusion
-        maskf = maskf & occf    # Combine to get only valid pixels
+        #occf = torch.sum(flowf_diff**2, dim=1) <= occf_thresh   # True if there is no occlusion
+        occf = 1.0 - soft_threshold(torch.sum(flowf_diff**2, dim=1), occf_thresh)
+        maskf = maskf * occf    # Combine to get only valid pixels
 
         # Penalize occluded pixels to prevent trivial solutions
-        mask_termf = torch.sum(~maskf, dim=(1, 2))
+        mask_termf = torch.sum(1.0 - maskf, dim=(1, 2))
 
         # Data term
         img2_warp = self._resample2d(img2, flowf)
@@ -124,11 +131,12 @@ class UnsupervisedFB(nn.Module):
         magb = torch.sum(flowb**2 + flowf_warp**2, dim=1)
         flowb_diff = flowb + flowf_warp
         occb_thresh = 0.01*magb + 0.5
-        occb = torch.sum(flowb_diff**2, dim=1) <= occb_thresh   # True if there is no occlusion
-        maskb = maskb & occb    # Combine to get only valid pixels
+        #occb = torch.sum(flowb_diff**2, dim=1) <= occb_thresh   # True if there is no occlusion
+        occb = 1.0 - soft_threshold(torch.sum(flowb_diff**2, dim=1), occb_thresh)
+        maskb = maskb * occb    # Combine to get only valid pixels
 
         # Penalize occluded pixels to prevent trivial solutions
-        mask_termb = torch.sum(~maskb, dim=(1, 2))
+        mask_termb = torch.sum(1.0 - maskb, dim=(1, 2))
 
         # Data term
         img1_warp = self._resample2d(img1, flowb)
