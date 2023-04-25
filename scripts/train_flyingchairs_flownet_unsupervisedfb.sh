@@ -30,9 +30,10 @@ python ../main.py \
 --loss=$LOSS \
 --loss_alpha=1.0 \
 --loss_beta=1.0 \
---loss_gamma=1.0 \
+--loss_gamma=0.0 \
 --loss_delta=0.2 \
---loss_mask_cost=12.4 \
+--loss_mask_cost=0.0 \
+--loss_soft_threshold=False \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \
