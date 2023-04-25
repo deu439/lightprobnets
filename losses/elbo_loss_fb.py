@@ -182,7 +182,7 @@ class ElboFB(nn.Module):
 
         return self._alpha * (data_termf + data_termb) + self._beta * (smooth_termf + smooth_termb) \
             + self._gamma * (gradient_termf + gradient_termb) + self._mask_cost * (mask_termf + mask_termb) \
-            + self._delta * fb_term
+            + self._delta * fb_term, maskf, maskb
 
     def forward(self, output_dict, target_dict):
         loss_dict = {}
@@ -195,7 +195,7 @@ class ElboFB(nn.Module):
         # Evaluate ELBO
         flowf_sample = self.reparam(meanf, log_varf)
         flowb_sample = self.reparam(meanb, log_varb)
-        energy = self.energy_fb(flowf_sample, flowb_sample, img1, img2)
+        energy, maskf, maskb = self.energy_fb(flowf_sample, flowb_sample, img1, img2)
         entropy = torch.sum(log_varf, dim=(1,2,3))/2 + torch.sum(log_varb, dim=(1,2,3))/2
         mean_elbo = energy.mean() - self._entropy_weight * entropy.mean()
         loss_dict["elbo"] = mean_elbo
@@ -204,6 +204,11 @@ class ElboFB(nn.Module):
         epe = elementwise_epe(meanf, target)
         mean_epe = epe.mean()
         loss_dict["epe"] = mean_epe
+
+        # Return also the masks if in validation
+        if not self.training:
+            output_dict["maskf"] = maskf
+            output_dict["maskb"] = maskb
 
         return loss_dict
 

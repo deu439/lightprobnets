@@ -164,7 +164,7 @@ class UnsupervisedFB(nn.Module):
 
         return self._alpha * (data_termf + data_termb) + self._beta * (smooth_termf + smooth_termb) \
             + self._gamma * (gradient_termf + gradient_termb) + self._mask_cost * (mask_termf + mask_termb) \
-            + self._delta * fb_term
+            + self._delta * fb_term, maskf, maskb
 
     def forward(self, output_dict, target_dict):
         loss_dict = {}
@@ -175,12 +175,17 @@ class UnsupervisedFB(nn.Module):
         flowb = output_dict["flow1b"]
 
         # Evaluate ELBO
-        energy = self.energy_fb(flowf, flowb, img1, img2)
+        energy, maskf, maskb = self.energy_fb(flowf, flowb, img1, img2)
         loss_dict["energy"] = energy.mean()
 
         # Calculate epe for validation
         epe = elementwise_epe(flowf, target)
         mean_epe = epe.mean()
         loss_dict["epe"] = mean_epe
+
+        # Return also the masks if in validation
+        if not self.training:
+            output_dict["maskf"] = maskf
+            output_dict["maskb"] = maskb
 
         return loss_dict

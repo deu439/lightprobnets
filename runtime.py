@@ -24,6 +24,46 @@ from utils.flow import torch_flow2rgb
 TQDM_SMOOTHING = 1
 
 
+def record_tensorboard_single(context, key, item, writer, epoch):
+    # Tensor
+    if torch.is_tensor(item):
+        item = item.cpu()
+
+        # Scalar in tensor
+        if (item.dim() == 1 and item.size(0) == 1) or item.dim() == 0:
+            writer.add_scalar(f"{context}/{key}", item.item(), epoch)
+
+        # Grayscale image
+        elif item.dim() == 3:
+            writer.add_images(f"{context}/{key}", item[None, :, :, :], epoch, dataformats='CNHW')
+
+        # Flow field
+        elif item.dim() == 4 and item.size(1) == 2:
+            image = torch_flow2rgb(item)
+            writer.add_images(f"{context}/{key}", image, epoch)
+
+        # RGB image
+        elif item.dim() == 4 and item.size(1) == 3:
+            writer.add_images(f"{context}/{key}", item, epoch)
+
+    # Scalar
+    elif type(item) == float:
+        writer.add_scalar(f"{context}/{key}", item, epoch)
+
+
+def record_tensorboard(context, any_dict, writer, epoch):
+    for key, item in any_dict.items():
+        # Special treatment for tuples - they are expected to contain the flow + log variance
+        if type(item) is tuple:
+            record_tensorboard_single(context, key+'_flow', item[0], writer, epoch)
+            entropy = torch.sum(item[1], axis=1)
+            entropy -= torch.min(entropy)
+            entropy /= torch.max(entropy)
+            record_tensorboard_single(context, key+'_entropy', entropy, writer, epoch)
+        else:
+            record_tensorboard_single(context, key, item, writer, epoch)
+
+
 # -------------------------------------------------------------------------------------------
 # Magic progressbar for inputs of type 'iterable'
 # -------------------------------------------------------------------------------------------
@@ -497,7 +537,7 @@ def exec_runtime(args,
                     augmentation=training_augmentation).run()
 
             # Training losses
-            writer.add_scalars('train', avg_loss_dict, epoch)
+            record_tensorboard('train/loss', avg_loss_dict, writer, epoch)
 
             # -------------------------------------------
             # Create and run a validation epoch
@@ -523,42 +563,10 @@ def exec_runtime(args,
                 # ----------------------------------------------------------------
                 # Record validation stats to the TensorBoard
                 # ----------------------------------------------------------------
-                overall_dict = {**output_dict, **example_dict}
-                for key, item in overall_dict.items():
-                    if key == 'flow1' or key == 'flow1f' or key == 'flow1b':
-                        if type(item) is tuple:     # Probabilistic network: flow + log-variance
-                            image = torch_flow2rgb(item[0].cpu())
-                            writer.add_images(key, image, epoch)
-                            uncertainty = torch.sum(item[1], axis=1)
-                            umin = torch.min(uncertainty)
-                            umax = torch.max(uncertainty)
-                            uncertainty -= torch.min(uncertainty)
-                            uncertainty /= torch.max(uncertainty)
-                            writer.add_images(key + ' uncertainty', uncertainty[None, :, :, :], epoch, dataformats='CNHW')
-                            writer.add_scalars(key + ' uncertainty_stats', {'min': umin, 'max': umax}, epoch)
-                        else:                       # Deterministic network: flow
-                            image = torch_flow2rgb(item.cpu())
-                            writer.add_images(key, image, epoch)
-
-                    if key == 'target1':
-                        image = torch_flow2rgb(item.cpu())
-                        writer.add_images(key, image, epoch)
-
-                    if key == 'flow_neg':
-                        image = torch_flow2rgb(item.cpu())
-                        writer.add_images('flow_neg', image, epoch)
-
-                    if key == 'img1_neg':
-                        writer.add_images('img1_neg', item.cpu(), epoch)
-
-                    if key == 'img2_neg':
-                        writer.add_images('img2_neg', item.cpu(), epoch)
-
-                    if key == 'weights':
-                        writer.add_scalars('weights', item, epoch)
-
-                # Validation losses
-                writer.add_scalars('valid', avg_loss_dict, epoch)
+                record_tensorboard('valid/output', output_dict, writer, epoch)
+                record_tensorboard('valid/example', example_dict, writer, epoch)
+                record_tensorboard('valid/loss', avg_loss_dict, writer, epoch)
+                writer.flush()
 
                 # ----------------------------------------------------------------
                 # Evaluate valdiation losses
