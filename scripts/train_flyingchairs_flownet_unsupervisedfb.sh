@@ -28,12 +28,12 @@ python ../main.py \
 --checkpoint=$CHECKPOINT \
 --logging_model_graph=True \
 --loss=$LOSS \
---loss_alpha=1.0 \
+--loss_alpha=2.0 \
 --loss_beta=1.0 \
 --loss_gamma=0.0 \
 --loss_delta=0.2 \
---loss_mask_cost=0.0 \
---loss_soft_threshold=False \
+--loss_mask_cost=1.0 \
+--loss_soft_threshold=True \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \
@@ -52,6 +52,7 @@ python ../main.py \
 --training_dataset_root=$FLYINGCHAIRS_HOME \
 --training_key=energy \
 --validation_dataset=FlyingChairsValid  \
+--validation_dataset_num_examples=-1 \
 --validation_dataset_root=$FLYINGCHAIRS_HOME \
 --validation_keys="[epe]" \
 --validation_keys_minimize="[True]"

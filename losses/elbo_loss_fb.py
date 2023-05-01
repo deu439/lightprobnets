@@ -25,7 +25,7 @@ def sigmoid(x, t, mu=1.0):
     return torch.special.expit(mu*(x-t))
 
 
-def border_mask(flow):
+def border_mask(flow, soft_threshold=True):
     """
     Generates a mask that is True for pixels whose correspondence is inside the image borders.
     flow: optical flow tensor (batch, 2, height, width)
@@ -37,15 +37,17 @@ def border_mask(flow):
     X, Y = torch.meshgrid(x, y, indexing='xy')
     Xp = X.view(1, h, w).repeat(b, 1, 1) + flow[:, 0, :, :]
     Yp = Y.view(1, h, w).repeat(b, 1, 1) + flow[:, 1, :, :]
-    #mask_x = (Xp > -0.5) & (Xp < w-0.5)
-    #mask_y = (Yp > -0.5) & (Yp < h-0.5)
-    mask_x = sigmoid(Xp, -0.5) * (1.0 - sigmoid(Xp, w - 0.5))
-    mask_y = sigmoid(Yp, -0.5) * (1.0 - sigmoid(Yp, h - 0.5))
+    if soft_threshold:
+        mask_x = sigmoid(Xp, -0.5) * (1.0 - sigmoid(Xp, w - 0.5))
+        mask_y = sigmoid(Yp, -0.5) * (1.0 - sigmoid(Yp, h - 0.5))
+    else:
+        mask_x = (Xp > -0.5) & (Xp < w-0.5)
+        mask_y = (Yp > -0.5) & (Yp < h-0.5)
     return mask_x * mask_y
 
 
 class ElboFB(nn.Module):
-    def __init__(self, args, alpha=1.0, beta=1.0, gamma=1.0, delta=1.0, Nsamples=1, entropy_weight=1.0, mask_cost=12.4, soft_threshold=True):
+    def __init__(self, args, alpha=1.0, beta=1.0, gamma=1.0, delta=1.0, Nsamples=1, entropy_weight=1.0, mask_cost=1.0, soft_threshold=True):
 
         super(ElboFB, self).__init__()
         self._args = args
@@ -108,9 +110,11 @@ class ElboFB(nn.Module):
         assert(flowf.is_cuda and flowb.is_cuda)
         assert(img1.is_cuda and img2.is_cuda)
 
+        energy_dict = dict()
+
         # Forward part ======
         # Calculate forward border mask
-        maskf = border_mask(flowf)
+        maskf = border_mask(flowf, soft_threshold=self._soft_threshold)
 
         # Calculate forward occlusion mask
         flowb_warp = self._resample2d(flowb, flowf)
@@ -125,17 +129,17 @@ class ElboFB(nn.Module):
         maskf = maskf * occf    # Combine to get only valid pixels
 
         # Penalize occluded pixels to prevent trivial solutions
-        mask_termf = torch.sum(1.0 - maskf, dim=(1, 2))
+        energy_dict["mask_termf"] = mask_termf = self._mask_cost * torch.sum(1.0 - maskf, dim=(1, 2)).mean()
 
         # Data term
         img2_warp = self._resample2d(img2, flowf)
         Af = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)
-        data_termf = torch.sum(penalty(Af) * maskf, dim=(1, 2))    # Sum masked penalty over x, y
+        energy_dict["data_termf"] = data_termf = self._alpha * torch.sum(penalty(Af) * maskf, dim=(1, 2)).mean()
 
         # Smoothness term
         Bf = F.pad(torch.sum(F.conv2d(flowf, self._kernel_dx)**2, dim=1), (0,1,0,0)) \
             + F.pad(torch.sum(F.conv2d(flowf, self._kernel_dy)**2, dim=1), (0,0,0,1))
-        smooth_termf = torch.sum(penalty(Bf), dim=(1, 2))
+        energy_dict["smooth_termf"] = smooth_termf = self._beta * torch.sum(penalty(Bf), dim=(1, 2)).mean()
 
         # Gradient term
         img1_gx = F.conv2d(img1, self._kernel_gx, padding=(0, 2))
@@ -144,11 +148,11 @@ class ElboFB(nn.Module):
         img2_warp_gy = F.conv2d(img2_warp, self._kernel_gy, padding=(2, 0))
         Cf = torch.sum((img1_gx.repeat(self._Nsamples, 1, 1, 1) - img2_warp_gx)**2, dim=1) \
             + torch.sum((img1_gy.repeat(self._Nsamples, 1, 1, 1) - img2_warp_gy)**2, dim=1)
-        gradient_termf = torch.sum(penalty(Cf) * maskf, dim=(1, 2))    # Sum masked penalty over x, y
+        energy_dict["gradient_termf"] = gradient_termf = self._gamma * torch.sum(penalty(Cf) * maskf, dim=(1, 2)).mean()
 
         # Backward part =====
         # Calculate forward border mask
-        maskb = border_mask(flowb)
+        maskb = border_mask(flowb, soft_threshold=self._soft_threshold)
 
         # Calculate forward occlusion mask
         flowf_warp = self._resample2d(flowf, flowb)
@@ -163,17 +167,17 @@ class ElboFB(nn.Module):
         maskb = maskb * occb    # Combine to get only valid pixels
 
         # Penalize occluded pixels to prevent trivial solutions
-        mask_termb = torch.sum(1.0 - maskb, dim=(1, 2))
+        energy_dict["mask_termb"] = mask_termb = self._mask_cost * torch.sum(1.0 - maskb, dim=(1, 2)).mean()
 
         # Data term
         img1_warp = self._resample2d(img1, flowb)
         Ab = torch.sum((img2.repeat(self._Nsamples, 1, 1, 1) - img1_warp)**2, dim=1)
-        data_termb = torch.sum(penalty(Ab) * maskb, dim=(1, 2))    # Sum masked penalty over x, y
+        energy_dict["data_termb"] = data_termb = self._alpha * torch.sum(penalty(Ab) * maskb, dim=(1, 2)).mean()
 
         # Smoothness term
         Bb = F.pad(torch.sum(F.conv2d(flowb, self._kernel_dx)**2, dim=1), (0,1,0,0)) \
             + F.pad(torch.sum(F.conv2d(flowb, self._kernel_dy)**2, dim=1), (0,0,0,1))
-        smooth_termb = torch.sum(penalty(Bb), dim=(1, 2))
+        energy_dict["smooth_termb"] = smooth_termb = self._beta * torch.sum(penalty(Bb), dim=(1, 2)).mean()
 
         # Gradient term
         img2_gx = F.conv2d(img2, self._kernel_gx, padding=(0, 2))
@@ -182,16 +186,17 @@ class ElboFB(nn.Module):
         img1_warp_gy = F.conv2d(img1_warp, self._kernel_gy, padding=(2, 0))
         Cb = torch.sum((img2_gx.repeat(self._Nsamples, 1, 1, 1) - img1_warp_gx)**2, dim=1) \
             + torch.sum((img2_gy.repeat(self._Nsamples, 1, 1, 1) - img1_warp_gy)**2, dim=1)
-        gradient_termb = torch.sum(penalty(Cb) * maskb, dim=(1, 2))    # Sum masked penalty over x, y
+        energy_dict["gradient_termb"] = gradient_termb = self._gamma * torch.sum(penalty(Cb) * maskb, dim=(1, 2)).mean()
 
         # Forward-backward consistency =====
         Df = torch.sum(flowf_diff ** 2, dim=1)
         Db = torch.sum(flowb_diff ** 2, dim=1)
-        fb_term = torch.sum(penalty(Df) * maskf + penalty(Db) * maskb, dim=(1, 2))
+        energy_dict["fb_term"] = fb_term = self._delta * torch.sum(penalty(Df) * maskf + penalty(Db) * maskb, dim=(1, 2)).mean()
 
-        return self._alpha * (data_termf + data_termb) + self._beta * (smooth_termf + smooth_termb) \
-            + self._gamma * (gradient_termf + gradient_termb) + self._mask_cost * (mask_termf + mask_termb) \
-            + self._delta * fb_term, maskf, maskb
+        energy = data_termf + data_termb + smooth_termf + smooth_termb + gradient_termf + gradient_termb \
+                 + mask_termf + mask_termb + fb_term
+
+        return energy, energy_dict, maskf, maskb
 
     def forward(self, output_dict, target_dict):
         loss_dict = {}
@@ -204,18 +209,20 @@ class ElboFB(nn.Module):
         # Evaluate ELBO
         flowf_sample = self.reparam(meanf, log_varf)
         flowb_sample = self.reparam(meanb, log_varb)
-        energy, maskf, maskb = self.energy_fb(flowf_sample, flowb_sample, img1, img2)
+        energy, energy_dict, maskf, maskb = self.energy_fb(flowf_sample, flowb_sample, img1, img2)
+
         entropy = torch.sum(log_varf, dim=(1,2,3))/2 + torch.sum(log_varb, dim=(1,2,3))/2
-        mean_elbo = energy.mean() - self._entropy_weight * entropy.mean()
-        loss_dict["elbo"] = mean_elbo
+        entropy = entropy.mean()
+        loss_dict["elbo"] = energy - self._entropy_weight * entropy
 
         # Calculate epe for validation
         epe = elementwise_epe(meanf, target)
         mean_epe = epe.mean()
         loss_dict["epe"] = mean_epe
 
-        # Return also the masks if in validation
+        # Return also the masks and energies if in validation
         if not self.training:
+            loss_dict = {**loss_dict, **energy_dict, "energy": energy, "entropy": entropy}
             output_dict["maskf"] = maskf
             output_dict["maskb"] = maskb
 
