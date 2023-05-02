@@ -23,6 +23,16 @@ from utils.flow import torch_flow2rgb
 # --------------------------------------------------------------------------------
 TQDM_SMOOTHING = 1
 
+tensorboard_layout = {
+    "Valid": {
+        "energy_components": ["Multiline", ["valid/loss/energy", "valid/loss/mask_termf", "valid/loss/mask_termb",
+                                 "valid/loss/data_termf", "valid/loss/data_termb", "valid/loss/smooth_termf",
+                                 "valid/loss/smooth_termb", "valid/loss/gradient_termf", "valid/loss/gradient_termb",
+                                 "valid/loss/fb_term"]],
+        "loss": ["Multiline", ["valid/loss/energy", "valid/loss/entropy", "valid/loss/elbo"]],
+    }
+}
+
 
 def record_tensorboard_single(context, key, item, writer, epoch):
     # Tensor
@@ -432,7 +442,7 @@ class EvaluationEpoch:
         # Record average losses
         # -------------------------------------------------------------
         avg_loss_dict = {key: ma.mean() for key, ma in moving_averages_dict.items()}
-        self._recorder.add_scalars("evaluation_losses", avg_loss_dict)
+        #self._recorder.add_scalars("evaluation_losses", avg_loss_dict)
 
         # -------------------------------------------------------------
         # Return average losses and output dictionary
@@ -455,6 +465,7 @@ def exec_runtime(args,
 
     # Initialize TensorBoard writer
     writer = SummaryWriter(os.path.join(args.save, 'tensorboard'))
+    writer.add_custom_scalars(tensorboard_layout)
 
     # ----------------------------------------------------------------------------------------------
     # Validation schedulers are a bit special:
