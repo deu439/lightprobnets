@@ -25,10 +25,8 @@ TQDM_SMOOTHING = 1
 
 tensorboard_layout = {
     "Valid": {
-        "energy_components": ["Multiline", ["valid/loss/energy", "valid/loss/mask_termf", "valid/loss/mask_termb",
-                                 "valid/loss/data_termf", "valid/loss/data_termb", "valid/loss/smooth_termf",
-                                 "valid/loss/smooth_termb", "valid/loss/gradient_termf", "valid/loss/gradient_termb",
-                                 "valid/loss/fb_term"]],
+        "energy_components": ["Multiline", ["valid/loss/energy", "valid/loss/mask_term", "valid/loss/data_term",
+                                            "valid/loss/smooth_term", "valid/loss/gradient_term", "valid/loss/fb_term"]],
         "loss": ["Multiline", ["valid/loss/energy", "valid/loss/entropy", "valid/loss/elbo"]],
     }
 }
