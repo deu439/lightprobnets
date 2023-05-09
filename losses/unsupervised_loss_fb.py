@@ -25,7 +25,7 @@ def sigmoid(x, t, mu=1.0):
     return torch.special.expit(mu*(x-t))
 
 
-def border_mask(flow, soft_threshold=True):
+def border_mask(flow):
     """
     Generates a mask that is True for pixels whose correspondence is inside the image borders.
     flow: optical flow tensor (batch, 2, height, width)
@@ -37,17 +37,13 @@ def border_mask(flow, soft_threshold=True):
     X, Y = torch.meshgrid(x, y, indexing='xy')
     Xp = X.view(1, h, w).repeat(b, 1, 1) + flow[:, 0, :, :]
     Yp = Y.view(1, h, w).repeat(b, 1, 1) + flow[:, 1, :, :]
-    if soft_threshold:
-        mask_x = sigmoid(Xp, -0.5) * (1.0 - sigmoid(Xp, w - 0.5))
-        mask_y = sigmoid(Yp, -0.5) * (1.0 - sigmoid(Yp, h - 0.5))
-    else:
-        mask_x = (Xp > -0.5) & (Xp < w-0.5)
-        mask_y = (Yp > -0.5) & (Yp < h-0.5)
+    mask_x = sigmoid(Xp, -0.5) * (1.0 - sigmoid(Xp, w - 0.5))
+    mask_y = sigmoid(Yp, -0.5) * (1.0 - sigmoid(Yp, h - 0.5))
     return mask_x * mask_y
 
 
 class UnsupervisedFB(nn.Module):
-    def __init__(self, args, alpha=1.0, beta=1.0, gamma=1.0, delta=1.0, mask_cost=1.0, soft_threshold=True):
+    def __init__(self, args, alpha=1.0, beta=1.0, gamma=1.0, delta=1.0, mask_cost=1.0, fb_thresh=0.01):
 
         super(UnsupervisedFB, self).__init__()
         self._args = args
@@ -56,9 +52,7 @@ class UnsupervisedFB(nn.Module):
         self._gamma = gamma
         self._delta = delta
         self._mask_cost = mask_cost
-        self._soft_threshold = soft_threshold
-        if not soft_threshold:
-            assert(mask_cost == 0)
+        self._fb_thresh = fb_thresh
         self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
         kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
@@ -102,11 +96,8 @@ class UnsupervisedFB(nn.Module):
         flowb_warp = self._resample2d(flowb, flowf)
         magf = torch.sum(flowf**2 + flowb_warp**2, dim=1)
         flowf_diff = flowf + flowb_warp
-        occf_thresh = 0.01*magf + 0.5
-        if self._soft_threshold:
-            occf = 1.0 - sigmoid(torch.sum(flowf_diff ** 2, dim=1), occf_thresh)
-        else:
-            occf = torch.sum(flowf_diff**2, dim=1) <= occf_thresh   # True if there is no occlusion
+        occf_thresh = self._fb_thresh*magf + 0.5
+        occf = 1.0 - sigmoid(torch.sum(flowf_diff ** 2, dim=1), occf_thresh)
 
         maskf = maskf * occf    # Combine to get only valid pixels
 
@@ -140,11 +131,8 @@ class UnsupervisedFB(nn.Module):
         flowf_warp = self._resample2d(flowf, flowb)
         magb = torch.sum(flowb**2 + flowf_warp**2, dim=1)
         flowb_diff = flowb + flowf_warp
-        occb_thresh = 0.01*magb + 0.5
-        if self._soft_threshold:
-            occb = 1.0 - sigmoid(torch.sum(flowb_diff ** 2, dim=1), occb_thresh)
-        else:
-            occb = torch.sum(flowb_diff**2, dim=1) <= occb_thresh   # True if there is no occlusion
+        occb_thresh = self._fb_thresh*magb + 0.5
+        occb = 1.0 - sigmoid(torch.sum(flowb_diff ** 2, dim=1), occb_thresh)
 
         maskb = maskb * occb    # Combine to get only valid pixels
 

@@ -34,7 +34,7 @@ python ../main.py \
 --loss_delta=0.2 \
 --loss_Nsamples=1 \
 --loss_mask_cost=1.0 \
---loss_soft_threshold=True \
+--loss_fb_thresh=0.01 \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \
