@@ -10,5 +10,5 @@ ml load cuda/11.3.1
 source $VENV/bin/activate
 export PYTHONUNBUFFERED=1
 export PYTHONPATH
-export FLYINGCHAIRS_HOME=/scratch-cbe/users/georg.pichler/flyingchairs/FlyingChairs_release/data
+export FLYINGCHAIRS_HOME=/scratch-cbe/users/jan.dorazil/FlyingChairs_release/data
 export TINYFLYINGCHAIRS_HOME=/scratch-cbe/users/jan.dorazil/flyingchairs/downscaled
