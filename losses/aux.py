@@ -86,7 +86,13 @@ def ternary_census_transform(image, patch_size):
     return transf_norm
 
 
-def census_loss(img1, img2_warp, radius=3):
+def census_loss(img1, img2_warp, mask, radius=3):
+    """
+    img1: first image (batch, 3, height, width) tensor
+    img2_warp: warped second image (batch, 3, height, width) tensor
+    mask: binary occlusion mask (batch, height, width) tensor
+    radius: radius of the neighborhood used in census transform
+    """
     patch_size = 2 * radius + 1
 
     def _hamming_distance(t1, t2):
@@ -106,47 +112,59 @@ def census_loss(img1, img2_warp, radius=3):
     dist = _hamming_distance(t1, t2)
     valid_mask = _valid_mask(img1, radius)
 
-    return dist, valid_mask
+    return torch.mean(abs_robust_loss(dist) * mask * valid_mask)    # Average over pixels and batch
 
 
-def color_loss(img1, img2_warp):
-    return torch.sqrt(torch.mean((img1 - img2_warp)**2, dim=1))
+def color_loss(img1, img2_warp, mask):
+    """
+    img1: first image (batch, 3, height, width) tensor
+    img2_warp: warped second image (batch, 3, height, width) tensor
+    mask: binary occlusion mask (batch, height, width) tensor
+    """
+    per_pixel = torch.sqrt(torch.mean((img1 - img2_warp)**2, dim=1))    # Average over channels
+    return torch.mean(robust_l1(per_pixel) * mask)  # Average over pixels and batch
 
 
-def gradient_loss(img1, img2_warp):
+def gradient_loss(img1, img2_warp, mask):
+    """
+    img1: first image (batch, 3, height, width) tensor
+    img2_warp: warped second image (batch, 3, height, width) tensor
+    mask: binary occlusion mask (batch, height, width) tensor
+    """
     img1_gx, img1_gy = image_gradient2(img1)
     img2_warp_gx, img2_warp_gy = image_gradient2(img2_warp)
-    return torch.sqrt(torch.mean((img1_gx - img2_warp_gx)**2 + (img1_gy - img2_warp_gy)**2, dim=1))
+    per_pixel = torch.sqrt(torch.mean((img1_gx - img2_warp_gx)**2 + (img1_gy - img2_warp_gy)**2, dim=1))    # Average over channels
+    return torch.mean(robust_l1(per_pixel) * mask)  # Average over pixels and batch
 
 
-def smooth_grad_1st(flow, image, alpha):
+def smooth_grad_1st(flow, image, edge_weight=4.0):
     """
-    flow: (batch, 2, height, width) tensor
-    image: (batch, 3, height, width) tensor
+    flow: optical flow (batch, 2, height, width) tensor
+    image: image used to calculate edge-based weights (batch, 3, height, width) tensor
     alpha: edge weighting parameter
     """
     # Calculate edge-weighting factor
     img_dx, img_dy = gradient(image)
-    weights_x = torch.exp(-torch.mean(torch.abs(img_dx), 1, keepdim=True) * alpha)
-    weights_y = torch.exp(-torch.mean(torch.abs(img_dy), 1, keepdim=True) * alpha)
+    weights_x = torch.exp(-torch.mean(torch.abs(img_dx), 1, keepdim=True) * edge_weight)
+    weights_y = torch.exp(-torch.mean(torch.abs(img_dy), 1, keepdim=True) * edge_weight)
 
     # Calculate flow gradients
     flow_dx, flow_dy = gradient(flow)
     loss_x = weights_x * robust_l1(flow_dx) / 2.0
     loss_y = weights_y * robust_l1(flow_dy) / 2.0
 
-    return loss_x.mean() + loss_y.mean()
+    return loss_x.mean() + loss_y.mean()    # Average over pixels, channels and batch
 
 
-def smooth_grad_2nd(flow, image, alpha):
+def smooth_grad_2nd(flow, image, edge_weight=4.0):
     """
-    flow: (batch, 2, height, width) tensor
-    image: (batch, 3, height, width) tensor
+    flow: optical flow (batch, 2, height, width) tensor
+    image: image used to calculate edge-based weights (batch, 3, height, width) tensor
     alpha: edge weighting parameter
     """
     img_dx, img_dy = gradient(image, stride=2)
-    weights_xx = torch.exp(-torch.mean(torch.abs(img_dx), 1, keepdim=True) * alpha)
-    weights_yy = torch.exp(-torch.mean(torch.abs(img_dy), 1, keepdim=True) * alpha)
+    weights_xx = torch.exp(-torch.mean(torch.abs(img_dx), 1, keepdim=True) * edge_weight)
+    weights_yy = torch.exp(-torch.mean(torch.abs(img_dy), 1, keepdim=True) * edge_weight)
 
     flow_dx, flow_dy = gradient(flow)
     flow_dx2, _ = gradient(flow_dx)
@@ -155,4 +173,4 @@ def smooth_grad_2nd(flow, image, alpha):
     loss_x = weights_xx * robust_l1(flow_dx2) / 2.0
     loss_y = weights_yy * robust_l1(flow_dy2) / 2.0
 
-    return loss_x.mean() + loss_y.mean()
+    return loss_x.mean() + loss_y.mean()    # Average over pixels channels and batch

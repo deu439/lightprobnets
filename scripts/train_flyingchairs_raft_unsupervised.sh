@@ -17,7 +17,7 @@ SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
 
 # training configuration
 python ../main.py \
---batch_size=2 \
+--batch_size=8 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
@@ -27,9 +27,9 @@ python ../main.py \
 --loss_gradient_weight=0.0 \
 --loss_census_weight=1.0 \
 --loss_census_radius=3 \
---loss_smooth_1st_weight=1.0 \
+--loss_smooth_1st_weight=2.0 \
 --loss_smooth_2nd_weight=0.0 \
---loss_edge_weight=4.0 \
+--loss_edge_weight=150.0 \
 --model=$MODEL \
 --num_workers=12 \
 --optimizer=Adam \

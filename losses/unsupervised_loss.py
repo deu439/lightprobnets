@@ -39,7 +39,6 @@ class Unsupervised(nn.Module):
 
         # Calculate border mask
         mask = border_mask(flow)
-        mask_term = torch.sum(mask, dim=(1, 2))
 
         # Warp img2 according to flow - on cpu-located tensors warping module fails without warning!
         assert(img2.is_cuda and flow.is_cuda)
@@ -48,20 +47,17 @@ class Unsupervised(nn.Module):
         # Data losses
         energy_dict = {}
         if self._color_weight > 0:
-            per_pixel = color_loss(img1, img2_warp)
-            energy_dict['color'] = self._color_weight * torch.mean(robust_l1(per_pixel) * mask)   # Average over pixels and batch
+            energy_dict['color'] = self._color_weight * color_loss(img1, img2_warp, mask)
         if self._gradient_weight > 0:
-            per_pixel = gradient_loss(img1, img2_warp)
-            energy_dict['gradient'] = self._gradient_weight * torch.mean(robust_l1(per_pixel) * mask)
+            energy_dict['gradient'] = self._gradient_weight * gradient_loss(img1, img2_warp, mask)
         if self._census_weight > 0:
-            per_pixel, valid_mask = census_loss(img1, img2_warp, radius=self._census_radius)
-            energy_dict['census'] = self._census_weight * torch.mean(abs_robust_loss(per_pixel) * mask * valid_mask)
+            energy_dict['census'] = self._census_weight * census_loss(img1, img2_warp, mask, radius=self._census_radius)
 
         # Smoothness losses
         if self._smooth_1st_weight > 0:
-            energy_dict['smooth_1st'] = self._smooth_1st_weight * smooth_grad_1st(flow, img1, alpha=self._edge_weight)
+            energy_dict['smooth_1st'] = self._smooth_1st_weight * smooth_grad_1st(flow, img1, edge_weight=self._edge_weight)
         if self._smooth_2nd_weight > 0:
-            energy_dict['smooth_2nd'] = self._smooth_2nd_weight * smooth_grad_2nd(flow, img1, alpha=self._edge_weight)
+            energy_dict['smooth_2nd'] = self._smooth_2nd_weight * smooth_grad_2nd(flow, img1, edge_weight=self._edge_weight)
 
         # Total loss
         energy = 0
