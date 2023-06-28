@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 from .endpoint_error import elementwise_epe
 from .resample2d_package.resample2d import Resample2d
+from .aux import border_mask, color_loss, gradient_loss, census_loss, robust_l1, abs_robust_loss, smooth_grad_1st, smooth_grad_2nd
 
 
 def upsample2d_as(inputs, target_as, mode="bilinear"):
@@ -14,56 +15,19 @@ def upsample2d_as(inputs, target_as, mode="bilinear"):
     return F.interpolate(inputs, [h, w], mode=mode, align_corners=True)
 
 
-# Charbonnier penalty
-def penalty(x):
-    return torch.sqrt(x + 1e-5)
-
-
-def border_mask(flow):
-    """
-    Generates a mask that is True for pixels whose correspondence is inside the image borders.
-    flow: optical flow tensor (batch, 2, height, width)
-    returns: mask (batch, height, width)
-    """
-    b, _, h, w = flow.size()
-    x = torch.arange(w).cuda()
-    y = torch.arange(h).cuda()
-    X, Y = torch.meshgrid(x, y, indexing='xy')
-    Xp = X.view(1, h, w).repeat(b, 1, 1) + flow[:, 0, :, :]
-    Yp = Y.view(1, h, w).repeat(b, 1, 1) + flow[:, 1, :, :]
-    mask_x = (Xp > -0.5) & (Xp < w-0.5)
-    mask_y = (Yp > -0.5) & (Yp < h-0.5)
-    return mask_x & mask_y
-
-
 class Unsupervised(nn.Module):
-    def __init__(self, args, alpha=1.0, beta=1.0, gamma=1.0, mask_cost=0.0):
+    def __init__(self, args, color_weight=0.0, gradient_weight=0.0, census_weight=1.0, census_radius=3,
+                 smooth_1st_weight=1.0, smooth_2nd_weight=0.0, edge_weight=4.0):
         super(Unsupervised, self).__init__()
         self._args = args
-        self._alpha = alpha
-        self._beta = beta
-        self._gamma = gamma
-        self._mask_cost = mask_cost
+        self._color_weight = color_weight
+        self._gradient_weight = gradient_weight
+        self._census_weight = census_weight
+        self._census_radius = census_radius
+        self._smooth_1st_weight = smooth_1st_weight
+        self._smooth_2nd_weight = smooth_2nd_weight
+        self._edge_weight = edge_weight
         self._resample2d = Resample2d()
-        # Convolution kernels for horizontal and vertical derivatives
-        kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
-        kernel_dy = torch.tensor([[[[-1], [1]], [[0], [0]]], [[[0], [0]], [[-1], [1]]]], dtype=torch.float32)
-        # Buffers are moved to GPU together with the parent module
-        self.register_buffer('_kernel_dx', kernel_dx)
-        self.register_buffer('_kernel_dy', kernel_dy)
-        # Convolution kernels for derivatives of the images
-        kernel_gx = torch.tensor([
-            [[[-1 / 12, 2 / 3, 0, -2 / 3, 1 / 12]], [[0, 0, 0, 0, 0]], [[0, 0, 0, 0, 0]]],
-            [[[0, 0, 0, 0, 0]], [[-1 / 12, 2 / 3, 0, -2 / 3, 1 / 12]], [[0, 0, 0, 0, 0]]],
-            [[[0, 0, 0, 0, 0]], [[0, 0, 0, 0, 0]], [[-1 / 12, 2 / 3, 0, -2 / 3, 1 / 12]]]
-        ], dtype=torch.float32)
-        kernel_gy = torch.tensor([
-            [[[-1 / 12], [2 / 3], [0], [-2 / 3], [1 / 12]], [[0], [0], [0], [0], [0]], [[0], [0], [0], [0], [0]]],
-            [[[0], [0], [0], [0], [0]], [[-1 / 12], [2 / 3], [0], [-2 / 3], [1 / 12]], [[0], [0], [0], [0], [0]]],
-            [[[0], [0], [0], [0], [0]], [[0], [0], [0], [0], [0]], [[-1 / 12], [2 / 3], [0], [-2 / 3], [1 / 12]]]
-        ], dtype=torch.float32)
-        self.register_buffer('_kernel_gx', kernel_gx)
-        self.register_buffer('_kernel_gy', kernel_gy)
 
     # Energy function
     def energy(self, flow, img1, img2):
@@ -80,22 +44,31 @@ class Unsupervised(nn.Module):
         # Warp img2 according to flow - on cpu-located tensors warping module fails without warning!
         assert(img2.is_cuda and flow.is_cuda)
         img2_warp = self._resample2d(img2, flow.contiguous())
-        A = torch.sum((img1 - img2_warp)**2, dim=1)
-        data_term = torch.sum(penalty(A) * mask, dim=(1, 2))
 
-        B = F.pad(torch.sum(F.conv2d(flow, self._kernel_dx)**2, dim=1), (0,1,0,0)) \
-            + F.pad(torch.sum(F.conv2d(flow, self._kernel_dy)**2, dim=1), (0,0,0,1))
-        smooth_term = torch.sum(penalty(B), dim=(1, 2))
+        # Data losses
+        energy_dict = {}
+        if self._color_weight > 0:
+            per_pixel = color_loss(img1, img2_warp)
+            energy_dict['color'] = self._color_weight * torch.mean(robust_l1(per_pixel) * mask)   # Average over pixels and batch
+        if self._gradient_weight > 0:
+            per_pixel = gradient_loss(img1, img2_warp)
+            energy_dict['gradient'] = self._gradient_weight * torch.mean(robust_l1(per_pixel) * mask)
+        if self._census_weight > 0:
+            per_pixel, valid_mask = census_loss(img1, img2_warp, radius=self._census_radius)
+            energy_dict['census'] = self._census_weight * torch.mean(abs_robust_loss(per_pixel) * mask * valid_mask)
 
-        img1_gx = F.conv2d(img1, self._kernel_gx, padding=(0, 2))
-        img1_gy = F.conv2d(img1, self._kernel_gy, padding=(2, 0))
-        img2_warp_gx = F.conv2d(img2_warp, self._kernel_gx, padding=(0, 2))
-        img2_warp_gy = F.conv2d(img2_warp, self._kernel_gy, padding=(2, 0))
-        C = torch.sum((img1_gx - img2_warp_gx)**2, dim=1) \
-            + torch.sum((img1_gy - img2_warp_gy)**2, dim=1)
-        gradient_term = torch.sum(penalty(C) * mask, dim=(1, 2))
+        # Smoothness losses
+        if self._smooth_1st_weight > 0:
+            energy_dict['smooth_1st'] = self._smooth_1st_weight * smooth_grad_1st(flow, img1, alpha=self._edge_weight)
+        if self._smooth_2nd_weight > 0:
+            energy_dict['smooth_2nd'] = self._smooth_2nd_weight * smooth_grad_2nd(flow, img1, alpha=self._edge_weight)
 
-        return self._alpha * data_term + self._beta * smooth_term + self._gamma * gradient_term + self._mask_cost * mask_term
+        # Total loss
+        energy = 0
+        for key, value in energy_dict.items():
+            energy += value
+
+        return energy, energy_dict
 
     def forward(self, output_dict, target_dict):
         loss_dict = {}
@@ -104,13 +77,17 @@ class Unsupervised(nn.Module):
         img2 = target_dict["input2"]
         flow1 = output_dict["flow1"]
 
-        # Evaluate ELBO
-        energy = self.energy(flow1, img1, img2)
-        loss_dict["energy"] = energy.mean()
+        # Evaluate loss
+        energy, energy_dict = self.energy(flow1, img1, img2)
+        loss_dict["energy"] = energy
 
         # Calculate epe for validation
         epe = elementwise_epe(flow1, target)
         mean_epe = epe.mean()
         loss_dict["epe"] = mean_epe
+
+        # Return everything if in validation
+        if not self.training:
+            loss_dict = {**loss_dict, **energy_dict}
 
         return loss_dict
