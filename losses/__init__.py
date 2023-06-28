@@ -20,3 +20,4 @@ MultiScaleElboUpflow = elbo_loss.MultiScaleElboUpflow
 Unsupervised = unsupervised_loss.Unsupervised
 ElboFB = elbo_loss_fb.ElboFB
 UnsupervisedFB = unsupervised_loss_fb.UnsupervisedFB
+UnsupervisedSequence = unsupervised_loss.UnsupervisedSequence

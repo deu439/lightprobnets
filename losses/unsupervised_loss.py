@@ -7,7 +7,7 @@ import torch.nn.functional as F
 
 from .endpoint_error import elementwise_epe
 from .resample2d_package.resample2d import Resample2d
-from .aux import border_mask, color_loss, gradient_loss, census_loss, robust_l1, abs_robust_loss, smooth_grad_1st, smooth_grad_2nd
+from .aux import border_mask, color_loss, gradient_loss, census_loss, smooth_grad_1st, smooth_grad_2nd
 
 
 def upsample2d_as(inputs, target_as, mode="bilinear"):
@@ -17,7 +17,7 @@ def upsample2d_as(inputs, target_as, mode="bilinear"):
 
 class Unsupervised(nn.Module):
     def __init__(self, args, color_weight=0.0, gradient_weight=0.0, census_weight=1.0, census_radius=3,
-                 smooth_1st_weight=1.0, smooth_2nd_weight=0.0, edge_weight=4.0):
+                 smooth_1st_weight=1.0, smooth_2nd_weight=0.0, edge_weight=150.0):
         super(Unsupervised, self).__init__()
         self._args = args
         self._color_weight = color_weight
@@ -73,11 +73,11 @@ class Unsupervised(nn.Module):
         img2 = target_dict["input2"]
         flow1 = output_dict["flow1"]
 
-        # Evaluate loss
+        # Evaluate energy
         energy, energy_dict = self.energy(flow1, img1, img2)
         loss_dict["energy"] = energy
 
-        # Calculate epe for validation
+        # Calculate epe
         epe = elementwise_epe(flow1, target)
         mean_epe = epe.mean()
         loss_dict["epe"] = mean_epe
@@ -85,5 +85,57 @@ class Unsupervised(nn.Module):
         # Return everything if in validation
         if not self.training:
             loss_dict = {**loss_dict, **energy_dict}
+
+        return loss_dict
+
+
+class UnsupervisedSequence(Unsupervised):
+    def __init__(self, args, color_weight=0.0, gradient_weight=0.0, census_weight=1.0, census_radius=3,
+                 smooth_1st_weight=1.0, smooth_2nd_weight=0.0, edge_weight=150.0, decay=0.8):
+
+        self._decay = decay
+        super(UnsupervisedSequence, self).__init__(args, color_weight, gradient_weight, census_weight, census_radius,
+              smooth_1st_weight, smooth_2nd_weight, edge_weight)
+
+    def forward(self, output_dict, target_dict):
+        loss_dict = {}
+        target = target_dict["target1"]
+        img1 = target_dict["input1"]
+        img2 = target_dict["input2"]
+
+        # Count the number of RAFT iterations
+        niter = len([key for key in output_dict if key.startswith('flow')])
+
+        sequence_energy = 0
+        sequence_energy_dict = {}
+        for iter in range(niter):
+            flow = output_dict[f'flow{iter+1}']
+            energy, energy_dict = self.energy(flow, img1, img2)
+
+            # Sum energies over all iterations with lower weight for early iterations
+            sequence_energy += (self._decay ** iter) * energy
+
+            # Sum also all energy components if in validation
+            if not self.training:
+                # Initialize
+                if iter == 0:
+                    sequence_energy_dict = energy_dict.copy()
+                    continue
+                # Sum with decay
+                for key in energy_dict:
+                    sequence_energy_dict[key] += (self._decay ** iter) * energy_dict[key]
+
+        # Store into loss dictionary
+        loss_dict["energy"] = sequence_energy
+
+        # Calculate epe
+        flow1 = output_dict['flow1']
+        epe = elementwise_epe(flow1, target)
+        mean_epe = epe.mean()
+        loss_dict["epe"] = mean_epe
+
+        # Return everything if in validation
+        if not self.training:
+            loss_dict = {**loss_dict, **sequence_energy_dict}
 
         return loss_dict
