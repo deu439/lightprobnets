@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from .endpoint_error import downsample2d_as
 from .endpoint_error import elementwise_epe
-from .resample2d_package.resample2d import Resample2d
+from .aux import flow_warp
 
 
 def upsample2d_as(inputs, target_as, mode="bilinear"):
@@ -52,7 +52,6 @@ class Elbo(nn.Module):
         self._gamma = gamma
         self._entropy_weight = entropy_weight
         self._mask_cost = mask_cost
-        self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
         kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
         kernel_dy = torch.tensor([[[[-1], [1]], [[0], [0]]], [[[0], [0]], [[-1], [1]]]], dtype=torch.float32)
@@ -100,7 +99,7 @@ class Elbo(nn.Module):
 
         # Warp img2 according to flow - on cpu-located tensors warping module fails without warning!
         assert(img2.is_cuda and flow.is_cuda)
-        img2_warp = self._resample2d(img2, flow.contiguous())
+        img2_warp = flow_warp(img2, flow.contiguous())
         A = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)
         data_term = torch.sum(penalty(A) * mask, dim=(1, 2))    # Sum masked penalty over x, y
 

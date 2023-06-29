@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 from .endpoint_error import downsample2d_as
 from .endpoint_error import elementwise_epe
-from .resample2d_package.resample2d import Resample2d
+from .aux import flow_warp
 
 
 def upsample2d_as(inputs, target_as, mode="bilinear"):
@@ -58,7 +58,6 @@ class ElboFB(nn.Module):
         self._entropy_weight = entropy_weight
         self._mask_cost = mask_cost
         self._fb_thresh = fb_thresh
-        self._resample2d = Resample2d()
         # Convolution kernels for horizontal and vertical derivatives
         kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
         kernel_dy = torch.tensor([[[[-1], [1]], [[0], [0]]], [[[0], [0]], [[-1], [1]]]], dtype=torch.float32)
@@ -111,7 +110,7 @@ class ElboFB(nn.Module):
         maskf = border_mask(flowf)
 
         # Calculate forward occlusion mask
-        flowb_warp = self._resample2d(flowb, flowf)
+        flowb_warp = flow_warp(flowb, flowf)
         magf = torch.sum(flowf**2 + flowb_warp**2, dim=1)
         flowf_diff = flowf + flowb_warp
         occf_thresh = self._fb_thresh*magf + 0.5
@@ -123,7 +122,7 @@ class ElboFB(nn.Module):
         mask_term = self._mask_cost * torch.sum(1.0 - maskf, dim=(1, 2)).mean()
 
         # Data term
-        img2_warp = self._resample2d(img2, flowf)
+        img2_warp = flow_warp(img2, flowf)
         Af = torch.sum((img1.repeat(self._Nsamples, 1, 1, 1) - img2_warp)**2, dim=1)
         data_term = self._alpha * torch.sum(penalty(Af) * maskf, dim=(1, 2)).mean()
 
@@ -146,7 +145,7 @@ class ElboFB(nn.Module):
         maskb = border_mask(flowb)
 
         # Calculate forward occlusion mask
-        flowf_warp = self._resample2d(flowf, flowb)
+        flowf_warp = flow_warp(flowf, flowb)
         magb = torch.sum(flowb**2 + flowf_warp**2, dim=1)
         flowb_diff = flowb + flowf_warp
         occb_thresh = self._fb_thresh*magb + 0.5
@@ -159,7 +158,7 @@ class ElboFB(nn.Module):
         energy_dict["mask_term"] = mask_term
 
         # Data term
-        img1_warp = self._resample2d(img1, flowb)
+        img1_warp = flow_warp(img1, flowb)
         Ab = torch.sum((img2.repeat(self._Nsamples, 1, 1, 1) - img1_warp)**2, dim=1)
         data_term += self._alpha * torch.sum(penalty(Ab) * maskb, dim=(1, 2)).mean()
         energy_dict["data_term"] = data_term
