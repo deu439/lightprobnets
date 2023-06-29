@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from losses.resample2d_package.resample2d import Resample2d
+from losses.aux import flow_warp
 
 import numpy as np
 import random
@@ -14,14 +14,12 @@ def penalty(x):
 
 
 class EnergyModel(nn.Module):
-    def __init__(self, max_flow=70.0, max_len=1000, steps=200, step_size=10):
+    def __init__(self, max_flow=80.0, max_len=1000, steps=200, step_size=10):
         super().__init__()
 
-        # Warping module
-        self._resample2d = Resample2d()
-
         # Initialize model parameters
-        self.log_weights = nn.Parameter(torch.randn(2)+5)
+        #self.log_weights = nn.Parameter(torch.randn(2)+10.0)
+        self.log_weights = nn.Parameter(torch.tensor([1.0, 1.0]))
 
         # Convolution kernels for horizontal and vertical derivatives
         kernel_dx = torch.tensor([[[[-1, 1]], [[0, 0]]], [[[0, 0]], [[-1, 1]]]], dtype=torch.float32)
@@ -54,7 +52,8 @@ class EnergyModel(nn.Module):
         img2 = (img2 + 1.0) / 2.0
 
         # Warp img2 according to flow
-        img2_warp = self._resample2d(img2, flow.contiguous())
+        #img2_warp = self._resample2d(img2, flow.contiguous())
+        img2_warp = img2
         A = torch.sum((img1.repeat(Nsamples, 1, 1, 1) - img2_warp) ** 2, dim=1)
         data_term = torch.sum(penalty(A), dim=(1, 2))
 
