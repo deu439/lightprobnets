@@ -10,7 +10,7 @@ TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT=None
-MODEL=RAFT
+MODEL=Raft
 PREFIX="train-flyingchairs-unsupervised"
 TIME=$(date +"%Y%m%d-%H%M%S")
 SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"

@@ -13,6 +13,7 @@ import models.flownet_custom
 import models.flownet_prob_fb
 import models.flownet_fb
 import models.raft
+import models.raft_fb
 
 AllConvNetADF = allconvnet_adf.AllConvNetADF
 AllConvNetProbOut = allconvnet_probout.AllConvNetProbOut
@@ -28,4 +29,5 @@ EnergyModel = energy_model.EnergyModel
 FlowNetCustom = flownet_custom.FlowNetCustom
 FlowNetProbFB = flownet_prob_fb.FlowNetProbFB
 FlowNetFB = flownet_fb.FlowNetFB
-RAFT = raft.RAFT
+Raft = raft.Raft
+RaftFB = raft_fb.RaftFB

@@ -10,19 +10,19 @@ TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT=None
-MODEL=Raft
+MODEL=RaftFB
 PREFIX="train-flyingchairs-unsupervised"
 TIME=$(date +"%Y%m%d-%H%M%S")
 SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
 
 # training configuration
 python ../main.py \
---batch_size=8 \
+--batch_size=4 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \
---loss=Unsupervised \
+--loss=UnsupervisedSequenceFB \
 --loss_color_weight=0.0 \
 --loss_gradient_weight=0.0 \
 --loss_census_weight=1.0 \
@@ -30,6 +30,7 @@ python ../main.py \
 --loss_smooth_1st_weight=2.0 \
 --loss_smooth_2nd_weight=0.0 \
 --loss_edge_weight=150.0 \
+--loss_decay=0.8 \
 --model=$MODEL \
 --num_workers=12 \
 --optimizer=Adam \

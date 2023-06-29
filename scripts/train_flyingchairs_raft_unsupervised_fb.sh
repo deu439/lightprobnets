@@ -10,7 +10,7 @@ TIME=$(date +"%Y%m%d-%H%M%S")
 
 # meta
 CHECKPOINT=None
-MODEL=Raft
+MODEL=RaftFB
 PREFIX="train-flyingchairs-unsupervised"
 TIME=$(date +"%Y%m%d-%H%M%S")
 SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
@@ -22,7 +22,7 @@ python ../main.py \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \
---loss=Unsupervised \
+--loss=UnsupervisedFB \
 --loss_color_weight=0.0 \
 --loss_gradient_weight=0.0 \
 --loss_census_weight=1.0 \

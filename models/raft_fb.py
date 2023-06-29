@@ -21,9 +21,9 @@ except:
             pass
 
 
-class Raft(nn.Module):
+class RaftFB(nn.Module):
     def __init__(self, small=True, dropout=False, alternate_corr=False, mixed_precision=False):
-        super(Raft, self).__init__()
+        super(RaftFB, self).__init__()
         self.alternate_corr = alternate_corr
         self.mixed_precision = mixed_precision
 
@@ -77,28 +77,11 @@ class Raft(nn.Module):
         up_flow = up_flow.permute(0, 1, 4, 2, 5, 3)
         return up_flow.reshape(N, 2, 8*H, 8*W)
 
-    def forward(self, input_dict, iters=12, flow_init=None, upsample=True, test_mode=False):
-        """ Estimate optical flow between pair of frames """
-
-        image1 = input_dict['input1']
-        image2 = input_dict['input2']
-        image1 = 2*image1 - 1.0
-        image2 = 2*image2 - 1.0
-        #image1 = 2 * (image1 / 255.0) - 1.0
-        #image2 = 2 * (image2 / 255.0) - 1.0
-
-        image1 = image1.contiguous()
-        image2 = image2.contiguous()
-
+    def predict(self, key, img, fmap1, fmap2, iters, flow_init):
         hdim = self.hidden_dim
         cdim = self.context_dim
 
-        # run the feature network
-        with autocast(enabled=self.mixed_precision):
-            fmap1, fmap2 = self.fnet([image1, image2])        
-        
-        fmap1 = fmap1.float()
-        fmap2 = fmap2.float()
+        # Fixme: backward correlation volume can be obtained efficiently by rearranging the forward one
         if self.alternate_corr:
             corr_fn = AlternateCorrBlock(fmap1, fmap2, radius=self.corr_radius)
         else:
@@ -106,12 +89,12 @@ class Raft(nn.Module):
 
         # run the context network
         with autocast(enabled=self.mixed_precision):
-            cnet = self.cnet(image1)
+            cnet = self.cnet(img)
             net, inp = torch.split(cnet, [hdim, cdim], dim=1)
             net = torch.tanh(net)
             inp = torch.relu(inp)
 
-        coords0, coords1 = self.initialize_flow(image1)
+        coords0, coords1 = self.initialize_flow(img)
 
         if flow_init is not None:
             coords1 = coords1 + flow_init
@@ -120,7 +103,7 @@ class Raft(nn.Module):
 
         for itr in range(iters):
             coords1 = coords1.detach()
-            corr = corr_fn(coords1) # index correlation volume
+            corr = corr_fn(coords1)  # index correlation volume
 
             flow = coords1 - coords0
             with autocast(enabled=self.mixed_precision):
@@ -135,9 +118,32 @@ class Raft(nn.Module):
             else:
                 flow_up = self.upsample_flow(coords1 - coords0, up_mask)
 
-            flow_predictions[f"flow{iters-itr}"] = flow_up
+            flow_predictions[key.format(iters - itr)] = flow_up
 
         if not self.training:
-            flow_predictions = {"flow1": flow_up}
+            flow_predictions = {key.format(1): flow_up}
 
         return flow_predictions
+
+    def forward(self, input_dict, iters=12, flow_init=None):
+        """ Estimate optical flow between pair of frames """
+
+        image1 = input_dict['input1']
+        image2 = input_dict['input2']
+        image1 = 2*image1 - 1.0
+        image2 = 2*image2 - 1.0
+
+        image1 = image1.contiguous()
+        image2 = image2.contiguous()
+
+        # run the feature network
+        with autocast(enabled=self.mixed_precision):
+            fmap1, fmap2 = self.fnet([image1, image2])        
+        
+        fmap1 = fmap1.float()
+        fmap2 = fmap2.float()
+
+        forward = self.predict("flow{:d}f", image1, fmap1, fmap2, iters, flow_init)
+        backward = self.predict("flow{:d}b", image1, fmap1, fmap2, iters, None)
+
+        return {**forward, **backward}
