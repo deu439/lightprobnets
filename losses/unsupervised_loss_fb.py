@@ -106,7 +106,7 @@ class UnsupervisedSequenceFB(UnsupervisedFB):
         img2 = target_dict["input2"]
 
         # Count the number of RAFT iterations
-        niter = len([key for key in output_dict if key.startswith('flow')]) / 2
+        niter = len([key for key in output_dict if key.startswith('flow')]) // 2
 
         sequence_energy = 0
         sequence_energy_dict = {}
