@@ -104,8 +104,8 @@ def border_mask(flow):
     X, Y = torch.meshgrid(x, y, indexing='xy')
     Xp = X.view(1, h, w).repeat(b, 1, 1) + flow[:, 0, :, :]
     Yp = Y.view(1, h, w).repeat(b, 1, 1) + flow[:, 1, :, :]
-    mask_x = (Xp > -0.5) & (Xp < w-0.5)
-    mask_y = (Yp > -0.5) & (Yp < h-0.5)
+    mask_x = (Xp > 0.0) & (Xp < w-1.0)
+    mask_y = (Yp > 0.0) & (Yp < h-1.0)
     return mask_x & mask_y
 
 
@@ -132,7 +132,7 @@ def census_loss(img1, img2_warp, mask, radius=3):
     def _hamming_distance(t1, t2):
         dist = torch.pow(t1 - t2, 2)
         dist_norm = dist / (0.1 + dist)
-        dist_mean = torch.mean(dist_norm, 1, keepdim=True)  # instead of sum
+        dist_mean = torch.sum(dist_norm, 1, keepdim=True)
         return dist_mean
 
     def _valid_mask(t, padding):

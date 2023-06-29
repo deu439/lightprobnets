@@ -27,7 +27,7 @@ python ../main.py \
 --loss_gradient_weight=0.0 \
 --loss_census_weight=1.0 \
 --loss_census_radius=3 \
---loss_smooth_1st_weight=2.0 \
+--loss_smooth_1st_weight=4.0 \
 --loss_smooth_2nd_weight=0.0 \
 --loss_edge_weight=150.0 \
 --model=$MODEL \
