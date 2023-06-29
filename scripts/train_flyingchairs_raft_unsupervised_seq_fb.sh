@@ -17,7 +17,6 @@ SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
 
 # training configuration
 python ../main.py \
---multi_gpu=True \
 --batch_size=8 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
