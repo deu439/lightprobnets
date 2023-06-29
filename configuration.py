@@ -131,6 +131,10 @@ def configure_model_and_loss(args):
         # ----------------------------------------------------
         model_and_loss = ModelAndLoss(args, model, loss)
 
+        # Multiple gpu support
+        if args.multi_gpu:
+            model_and_loss = torch.nn.DataParallel(model_and_loss)
+
         # ---------------------------------------------------------------
         # Report some network statistics
         # ---------------------------------------------------------------
