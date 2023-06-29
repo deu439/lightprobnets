@@ -6,8 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .endpoint_error import elementwise_epe
-from .resample2d_package.resample2d import Resample2d
-from .aux import border_mask, color_loss, gradient_loss, census_loss, smooth_grad_1st, smooth_grad_2nd
+from .aux import flow_warp, border_mask, color_loss, gradient_loss, census_loss, smooth_grad_1st, smooth_grad_2nd
 
 
 def upsample2d_as(inputs, target_as, mode="bilinear"):
@@ -27,7 +26,6 @@ class Unsupervised(nn.Module):
         self._smooth_1st_weight = smooth_1st_weight
         self._smooth_2nd_weight = smooth_2nd_weight
         self._edge_weight = edge_weight
-        self._resample2d = Resample2d()
 
     # Energy function
     def energy(self, flow, img1, img2):
@@ -40,9 +38,8 @@ class Unsupervised(nn.Module):
         # Calculate border mask
         mask = border_mask(flow)
 
-        # Warp img2 according to flow - on cpu-located tensors warping module fails without warning!
-        assert(img2.is_cuda and flow.is_cuda)
-        img2_warp = self._resample2d(img2, flow.contiguous())
+        # Warp img2 according to flow
+        img2_warp = flow_warp(img2, flow)
 
         # Data losses
         energy_dict = {}
