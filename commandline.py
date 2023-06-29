@@ -153,9 +153,11 @@ def _add_special_arguments(parser):
     # -------------------------------------------------------------------------
     known_args = vars(parser.parse_known_args(sys.argv[1:])[0])
 
+
     # -------------------------------------------------------------------------
     # Add special arguments for training
     # -------------------------------------------------------------------------
+    parser.add_argument("--multi_gpu", type=bool, default=False)
     loss = known_args["loss"]
     if loss is not None:
         parser.add_argument("--training_key", type=str, default="total_loss")
