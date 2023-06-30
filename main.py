@@ -76,8 +76,8 @@ def main():
     # Cuda
     # -----------------------------------------------------------
     with logger.LoggingBlock("Device", emph=True):
-        if args.cuda:
-            device = torch.device("cuda")
+        if args.cuda is not None:
+            device = torch.device(args.cuda)
             logging.info("GPU")
         else:
             device = torch.device("cpu")
