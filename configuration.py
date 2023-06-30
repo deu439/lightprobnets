@@ -78,7 +78,7 @@ def configure_runtime_augmentations(args):
             training_augmentation = typeinf.instance_from_kwargs(
                 args.training_augmentation_class, kwargs)
             if args.cuda is not None:
-                training_augmentation = training_augmentation.cuda()
+                training_augmentation = training_augmentation.cuda(args.cuda)
 
         else:
             logging.info("training_augmentation: None")
@@ -95,7 +95,7 @@ def configure_runtime_augmentations(args):
             validation_augmentation = typeinf.instance_from_kwargs(
                 args.validation_augmentation_class, kwargs)
             if args.cuda is not None:
-                validation_augmentation = validation_augmentation.cuda()
+                validation_augmentation = validation_augmentation.cuda(args.cuda)
 
         else:
             logging.info("validation_augmentation: None")

@@ -66,8 +66,9 @@ class Unsupervised(nn.Module):
     def forward(self, output_dict, target_dict):
         loss_dict = {}
         target = target_dict["target1"]
-        img1 = target_dict["input1"]
-        img2 = target_dict["input2"]
+        # Use original images for unsupervised loss
+        img1 = target_dict["input1o"]
+        img2 = target_dict["input2o"]
         flow1 = output_dict["flow1"]
 
         # Evaluate energy

@@ -28,10 +28,11 @@ python ../main.py \
 --loss_gradient_weight=0.0 \
 --loss_census_weight=1.0 \
 --loss_census_radius=3 \
---loss_smooth_1st_weight=2.0 \
+--loss_smooth_1st_weight=1.0 \
 --loss_smooth_2nd_weight=0.0 \
 --loss_edge_weight=150.0 \
 --model=$MODEL \
+--model_small=False \
 --num_workers=12 \
 --optimizer=Adam \
 --optimizer_lr=1e-4 \
@@ -39,7 +40,6 @@ python ../main.py \
 --proctitle=$MODEL \
 --save=$SAVE_PATH \
 --total_epochs=216 \
---training_augmentation=RandomAffineFlow \
 --training_dataset=FlyingChairsTrain \
 --training_dataset_num_examples=-1 \
 --training_dataset_photometric_augmentations=True \

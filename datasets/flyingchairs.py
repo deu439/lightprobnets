@@ -143,6 +143,11 @@ class FlyingChairs(data.Dataset):
         # ----------------------------------------------------------
         # photometric_augmentations
         # ----------------------------------------------------------
+        self._to_tensor = transforms.ConcatTransformSplitChainer([
+            # uint8 -> FloatTensor
+            vision_transforms.transforms.ToTensor(),
+        ], from_numpy=True, to_numpy=False)
+
         if photometric_augmentations:
             self._photometric_transform = transforms.ConcatTransformSplitChainer([
                 # uint8 -> PIL
@@ -155,10 +160,7 @@ class FlyingChairs(data.Dataset):
             ], from_numpy=True, to_numpy=False)
 
         else:
-            self._photometric_transform = transforms.ConcatTransformSplitChainer([
-                # uint8 -> FloatTensor
-                vision_transforms.transforms.ToTensor(),
-            ], from_numpy=True, to_numpy=False)
+            self._photometric_transform = self._to_tensor
 
     def __getitem__(self, index):
         index = index % self._size
@@ -172,17 +174,9 @@ class FlyingChairs(data.Dataset):
         im2_np0 = common.read_image_as_byte(im2_filename)
         flo_np0 = common.read_flo_as_float32(flo_filename)
 
-        # possibly apply photometric transformations
+        # apply photometric transformations, but keep also the originals
+        im1o, im2o = self._to_tensor(im1_np0, im2_np0)
         im1, im2 = self._photometric_transform(im1_np0, im2_np0)
-
-        # import numpy as np
-        # from matplotlib import pyplot as plt
-        # import numpy as np
-        # plt.figure()
-        # im1_np = im1.numpy().transpose([1,2,0])
-        # im2_np = im2.numpy().transpose([1,2,0])
-        # plt.imshow(np.concatenate((im1_np0.astype(np.float32)/255.0, im2_np0.astype(np.float32)/255.0, im1_np, im2_np), 1))
-        # plt.show(block=True)
 
         # convert flow to FloatTensor
         flo = common.numpy2torch(flo_np0)
@@ -193,6 +187,8 @@ class FlyingChairs(data.Dataset):
         example_dict = {
             "input1": im1,
             "input2": im2,
+            "input1o": im1o,
+            "input2o": im2o,
             "target1": flo,
             "index": index,
             "basename": basename
