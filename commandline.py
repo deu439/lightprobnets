@@ -361,7 +361,8 @@ def _parse_arguments():
     # -------------------------------------------------------------------------
     # Consistency checks
     # -------------------------------------------------------------------------
-    args.cuda = args.cuda and torch.cuda.is_available()
+    if not torch.cuda.is_available():
+        args.cuda = None
 
     return args, defaults
 

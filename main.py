@@ -77,6 +77,7 @@ def main():
     # -----------------------------------------------------------
     with logger.LoggingBlock("Device", emph=True):
         if args.cuda is not None:
+            print(args.cuda)
             device = torch.device(args.cuda)
             logging.info("GPU")
         else:
@@ -145,7 +146,7 @@ def main():
     # ----------------------------------------------------------
     # Cuda optimization
     # ----------------------------------------------------------
-    if args.cuda:
+    if args.cuda is not None:
         torch.backends.cudnn.benchmark = True
 
     # ----------------------------------------------------------

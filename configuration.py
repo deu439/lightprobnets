@@ -77,7 +77,7 @@ def configure_runtime_augmentations(args):
             kwargs["args"] = args
             training_augmentation = typeinf.instance_from_kwargs(
                 args.training_augmentation_class, kwargs)
-            if args.cuda:
+            if args.cuda is not None:
                 training_augmentation = training_augmentation.cuda()
 
         else:
@@ -94,7 +94,7 @@ def configure_runtime_augmentations(args):
             kwargs["args"] = args
             validation_augmentation = typeinf.instance_from_kwargs(
                 args.validation_augmentation_class, kwargs)
-            if args.cuda:
+            if args.cuda is not None:
                 validation_augmentation = validation_augmentation.cuda()
 
         else:
@@ -130,10 +130,6 @@ def configure_model_and_loss(args):
         # Model and loss
         # ----------------------------------------------------
         model_and_loss = ModelAndLoss(args, model, loss)
-
-        # Multiple gpu support
-        if args.multi_gpu:
-            model_and_loss = torch.nn.DataParallel(model_and_loss)
 
         # ---------------------------------------------------------------
         # Report some network statistics
@@ -385,7 +381,7 @@ def configure_data_loaders(args):
         # -----------------------------------------------------------------------------------------
         # GPU parameters
         # -----------------------------------------------------------------------------------------
-        gpuargs = {"num_workers": args.num_workers, "pin_memory": True} if args.cuda else {}
+        gpuargs = {"num_workers": args.num_workers, "pin_memory": True} if args.cuda is not None else {}
 
         train_loader = None
         validation_loader = None
