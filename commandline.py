@@ -157,7 +157,6 @@ def _add_special_arguments(parser):
     # -------------------------------------------------------------------------
     # Add special arguments for training
     # -------------------------------------------------------------------------
-    parser.add_argument("--multi_gpu", type=bool, default=False)
     loss = known_args["loss"]
     if loss is not None:
         parser.add_argument("--training_key", type=str, default="total_loss")
@@ -203,7 +202,7 @@ def _parse_arguments():
     # -------------------------------------------------------------------------
     add("--batch_size", type=int, default=1)
     add("--checkpoint", type=strings.as_string_or_none, default=None)
-    add("--cuda", type=strings.as_bool_or_none, default=True)
+    add("--cuda", type=strings.as_string_or_none, default=None)
     add("--evaluation", type=strings.as_bool_or_none, default=False)
     add("--logging_loss_graph", type=strings.as_bool_or_none, default=False)
     add("--logging_model_graph", type=strings.as_bool_or_none, default=False)
