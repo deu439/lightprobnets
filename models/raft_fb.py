@@ -144,6 +144,6 @@ class RaftFB(nn.Module):
         fmap2 = fmap2.float()
 
         forward = self.predict("flow{:d}f", image1, fmap1, fmap2, iters, flow_init)
-        backward = self.predict("flow{:d}b", image1, fmap1, fmap2, iters, None)
+        backward = self.predict("flow{:d}b", image2, fmap2, fmap1, iters, None)
 
         return {**forward, **backward}
