@@ -98,8 +98,8 @@ class UnsupervisedSequence(Unsupervised):
     def forward(self, output_dict, target_dict):
         loss_dict = {}
         target = target_dict["target1"]
-        img1 = target_dict["input1"]
-        img2 = target_dict["input2"]
+        img1 = target_dict["input1o"]
+        img2 = target_dict["input2o"]
 
         # Count the number of RAFT iterations
         niter = len([key for key in output_dict if key.startswith('flow')])

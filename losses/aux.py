@@ -146,7 +146,7 @@ def census_loss(img1, img2_warp, mask, radius=3):
     dist = _hamming_distance(t1, t2)
     valid_mask = _valid_mask(img1, radius)
 
-    return torch.mean(abs_robust_loss(dist) * mask * valid_mask)    # Average over pixels and batch
+    return torch.sum(abs_robust_loss(dist) * mask * valid_mask) / (torch.sum(mask * valid_mask) + 1e-6)
 
 
 def color_loss(img1, img2_warp, mask):
