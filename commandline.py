@@ -213,6 +213,7 @@ def _parse_arguments():
     add("--seed", type=int, default=1)
     add("--start_epoch", type=int, default=1)
     add("--total_epochs", type=int, default=10)
+    add("--multi_gpu", type=strings.as_bool_or_none, default=False)
 
     # -------------------------------------------------------------------------
     # Arguments inferred from losses

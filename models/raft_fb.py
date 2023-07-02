@@ -47,7 +47,7 @@ class RaftFB(nn.Module):
 
         else:
             self.fnet = BasicEncoder(output_dim=256, norm_fn='instance', dropout=dropout)
-            self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='batch', dropout=dropout)
+            self.cnet = BasicEncoder(output_dim=hdim+cdim, norm_fn='instance', dropout=dropout)
             self.update_block = BasicUpdateBlock(self.corr_levels, self.corr_radius, hidden_dim=hdim)
 
     def freeze_bn(self):

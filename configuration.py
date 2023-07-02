@@ -116,6 +116,9 @@ def configure_model_and_loss(args):
         kwargs = typeinf.kwargs_from_args(args, "model")
         kwargs["args"] = args
         model = typeinf.instance_from_kwargs(args.model_class, kwargs)
+        # Multiple-GPU support
+        if args.multi_gpu:
+            model = torch.nn.DataParallel(model)
 
         # ----------------------------------------------------
         # Training loss
