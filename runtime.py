@@ -233,6 +233,11 @@ class TrainingEpoch:
         loss.backward()
 
         # -------------------------------------------------------------
+        # Gradient clipping
+        # -------------------------------------------------------------
+        torch.nn.utils.clip_grad_norm_(self._model_and_loss.parameters(), args.clip)
+
+        # -------------------------------------------------------------
         # Optimizer step
         # -------------------------------------------------------------
         self._optimizer.step()

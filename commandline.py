@@ -214,6 +214,7 @@ def _parse_arguments():
     add("--start_epoch", type=int, default=1)
     add("--total_epochs", type=int, default=10)
     add("--multi_gpu", type=strings.as_bool_or_none, default=False)
+    add("--clip", type=float, default=1.0)
 
     # -------------------------------------------------------------------------
     # Arguments inferred from losses
