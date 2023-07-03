@@ -235,7 +235,7 @@ class TrainingEpoch:
         # -------------------------------------------------------------
         # Gradient clipping
         # -------------------------------------------------------------
-        torch.nn.utils.clip_grad_norm_(self._model_and_loss.parameters(), args.clip)
+        torch.nn.utils.clip_grad_norm_(self._model_and_loss.parameters(), self._args.clip)
 
         # -------------------------------------------------------------
         # Optimizer step
