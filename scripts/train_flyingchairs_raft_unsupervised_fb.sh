@@ -19,7 +19,7 @@ SAVE_PATH="$PWD/../output/$MODEL-$TIME-$PREFIX"
 python ../main.py \
 --cuda="cuda" \
 --multi_gpu=True \
---batch_size=8 \
+--batch_size=6 \
 --checkpoint=$CHECKPOINT \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
@@ -29,11 +29,11 @@ python ../main.py \
 --loss_gradient_weight=0.0 \
 --loss_census_weight=1.0 \
 --loss_census_radius=3 \
---loss_smooth_1st_weight=1.0 \
+--loss_smooth_1st_weight=50.0 \
 --loss_smooth_2nd_weight=0.0 \
 --loss_edge_weight=150.0 \
 --model=$MODEL \
---model_small=False \
+--model_small=True \
 --num_workers=12 \
 --optimizer=Adam \
 --optimizer_lr=1e-4 \

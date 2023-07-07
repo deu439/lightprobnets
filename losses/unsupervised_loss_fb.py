@@ -36,11 +36,11 @@ class UnsupervisedFB(nn.Module):
         """
 
         # Calculate border mask
-        mask = border_mask(flowf).detach()
+        mask = border_mask(flowf)
 
         # Calculate occlusion mask - do not propagate gradient into occlusion mask calculation
-        occ_mask = get_occu_mask_backward(flowb).detach()
-        mask = mask * (1.0 - occ_mask)
+        occ_mask = get_occu_mask_backward(flowb)
+        mask = torch.detach(mask & occ_mask).float()
 
         # Warp img2 according to flow
         img2_warp = flow_warp(img2, flowf)
@@ -65,7 +65,7 @@ class UnsupervisedFB(nn.Module):
         for key, value in energy_dict.items():
             energy += value
 
-        return energy, energy_dict
+        return energy, energy_dict, mask
 
     def forward(self, output_dict, target_dict):
         loss_dict = {}
@@ -77,7 +77,7 @@ class UnsupervisedFB(nn.Module):
         flow1b = output_dict["flow1b"]
 
         # Evaluate energy
-        energy, energy_dict = self.energy(flow1f, flow1b, img1, img2)
+        energy, energy_dict, mask = self.energy(flow1f, flow1b, img1, img2)
         loss_dict["energy"] = energy
 
         # Calculate epe
@@ -88,6 +88,7 @@ class UnsupervisedFB(nn.Module):
         # Return everything if in validation
         if not self.training:
             loss_dict = {**loss_dict, **energy_dict}
+            output_dict["mask"] = mask
 
         return loss_dict
 
@@ -114,7 +115,7 @@ class UnsupervisedSequenceFB(UnsupervisedFB):
         for iter in range(niter):
             flowf = output_dict[f'flow{iter+1}f']
             flowb = output_dict[f'flow{iter+1}b']
-            energy, energy_dict = self.energy(flowf, flowb, img1, img2)
+            energy, energy_dict, mask = self.energy(flowf, flowb, img1, img2)
 
             # Sum energies over all iterations with lower weight for early iterations
             sequence_energy += (self._decay ** iter) * energy

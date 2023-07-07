@@ -96,7 +96,7 @@ def border_mask(flow):
     """
     Generates a mask that is True for pixels whose correspondence is inside the image borders.
     flow: optical flow tensor (batch, 2, height, width)
-    returns: mask (batch, height, width)
+    returns: mask (batch, 1, height, width)
     """
     b, _, h, w = flow.size()
     x = torch.arange(w).type_as(flow)
@@ -106,7 +106,7 @@ def border_mask(flow):
     Yp = Y.view(1, h, w).repeat(b, 1, 1) + flow[:, 1, :, :]
     mask_x = (Xp > 0.0) & (Xp < w-1.0)
     mask_y = (Yp > 0.0) & (Yp < h-1.0)
-    return mask_x & mask_y
+    return (mask_x & mask_y).view(b, 1, h, w)
 
 
 def ternary_census_transform(image, patch_size):
@@ -153,9 +153,9 @@ def color_loss(img1, img2_warp, mask):
     """
     img1: first image (batch, 3, height, width) tensor
     img2_warp: warped second image (batch, 3, height, width) tensor
-    mask: binary occlusion mask (batch, height, width) tensor
+    mask: binary occlusion mask (batch, 1, height, width) tensor
     """
-    per_pixel = torch.sqrt(torch.mean((img1 - img2_warp)**2, dim=1))    # Average over channels
+    per_pixel = torch.sqrt(torch.mean((img1 - img2_warp)**2, dim=1, keepdim=True))    # Average over channels
     return torch.mean(robust_l1(per_pixel) * mask)  # Average over pixels and batch
 
 
@@ -163,11 +163,11 @@ def gradient_loss(img1, img2_warp, mask):
     """
     img1: first image (batch, 3, height, width) tensor
     img2_warp: warped second image (batch, 3, height, width) tensor
-    mask: binary occlusion mask (batch, height, width) tensor
+    mask: binary occlusion mask (batch, 1, height, width) tensor
     """
     img1_gx, img1_gy = image_gradient2(img1)
     img2_warp_gx, img2_warp_gy = image_gradient2(img2_warp)
-    per_pixel = torch.sqrt(torch.mean((img1_gx - img2_warp_gx)**2 + (img1_gy - img2_warp_gy)**2, dim=1))    # Average over channels
+    per_pixel = torch.sqrt(torch.mean((img1_gx - img2_warp_gx)**2 + (img1_gy - img2_warp_gy)**2, dim=1, keepdim=1))    # Average over channels
     return torch.mean(robust_l1(per_pixel) * mask)  # Average over pixels and batch
 
 
@@ -175,7 +175,7 @@ def smooth_grad_1st(flow, image, edge_weight=4.0):
     """
     flow: optical flow (batch, 2, height, width) tensor
     image: image used to calculate edge-based weights (batch, 3, height, width) tensor
-    alpha: edge weighting parameter
+    edge_weight: edge weighting parameter
     """
     # Calculate edge-weighting factor
     img_dx, img_dy = gradient(image)
@@ -194,7 +194,7 @@ def smooth_grad_2nd(flow, image, edge_weight=4.0):
     """
     flow: optical flow (batch, 2, height, width) tensor
     image: image used to calculate edge-based weights (batch, 3, height, width) tensor
-    alpha: edge weighting parameter
+    edge_weight: edge weighting parameter
     """
     img_dx, img_dy = gradient(image, stride=2)
     weights_xx = torch.exp(-torch.mean(torch.abs(img_dx), 1, keepdim=True) * edge_weight)
@@ -269,9 +269,14 @@ def get_corresponding_map(data):
 
 # Credit: https://github.com/lliuz/ARFlow/blob/e92a8bbe66f0ced244267f43e3e55ad0fe46ff3e/utils/warp_utils.py#L106
 def get_occu_mask_backward(flow21, th=0.2):
+    """
+    Generates a mask that is True for non-occluded pixels
+    flow21: optical flow tensor (batch, 2, height, width)
+    returns: mask (batch, 1, height, width)
+    """
     B, _, H, W = flow21.size()
     base_grid = mesh_grid(B, H, W).type_as(flow21)  # B2HW
 
     corr_map = get_corresponding_map(base_grid + flow21)  # BHW
-    occu_mask = corr_map.clamp(min=0., max=1.) < th
-    return occu_mask.float()
+    occu_mask = corr_map.clamp(min=0., max=1.) >= th
+    return occu_mask

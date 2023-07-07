@@ -24,16 +24,19 @@ fi
 
 # training configuration
 python ../main.py \
---batch_size=8 \
+--batch_size=16 \
+--cuda="cuda" \
+--multi_gpu=True \
 --checkpoint=$CHECKPOINT \
 --logging_model_graph=True \
 --loss=$LOSS \
---loss_alpha=2.0 \
---loss_beta=1.0 \
---loss_gamma=0.0 \
---loss_delta=0.2 \
---loss_mask_cost=1.0 \
---loss_fb_thresh=0.01 \
+--loss_color_weight=0.0 \
+--loss_gradient_weight=0.0 \
+--loss_census_weight=10.0 \
+--loss_census_radius=3 \
+--loss_smooth_1st_weight=1.0 \
+--loss_smooth_2nd_weight=0.0 \
+--loss_edge_weight=150.0 \
 --lr_scheduler=MultiStepLR \
 --lr_scheduler_gamma=0.5 \
 --lr_scheduler_milestones="[108, 144, 180]" \

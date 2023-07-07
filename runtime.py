@@ -42,8 +42,8 @@ def record_tensorboard_single(context, key, item, writer, epoch):
             writer.add_scalar(f"{context}/{key}", item.item(), epoch)
 
         # Grayscale image
-        elif item.dim() == 3:
-            writer.add_images(f"{context}/{key}", item[None, :, :, :], epoch, dataformats='CNHW')
+        elif item.dim() == 4 and item.size(1) == 1:
+            writer.add_images(f"{context}/{key}", item, epoch, dataformats='NCHW')
 
         # Flow field
         elif item.dim() == 4 and item.size(1) == 2:
